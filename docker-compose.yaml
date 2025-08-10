@@ -1,0 +1,65 @@
+services:
+  nap-db:
+    image: postgres:17
+    container_name: nap-db
+    hostname: nap-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_platform
+    volumes:
+      - ./data/nap-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+  
+  nap-pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: nap-pgadmin
+    hostname: nap-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - ./data/nap-pgadmin-data:/var/lib/pgadmin
+    
+  nap-mailpit:
+    image: axllent/mailpit
+    container_name: nap-mailpit
+    hostname: nap-mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    volumes:
+      - ./data/nap-mailpit-data:/data
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+  
+  nap-redis:
+    image: redis:8
+    container_name: nap-redis
+    hostname: nap-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/nap-redis-data:/data
+    command: redis-server --requirepass nap-redis-password --appendonly yes
+  
+
+  nap-minio:
+    image: quay.io/minio/minio:latest
+    container_name: nap-minio
+    hostname: nap-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./data/nap-minio-data:/data
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio-admin

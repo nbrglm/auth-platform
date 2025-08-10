@@ -1,0 +1,67 @@
+version: "3"
+
+dotenv: [".env.local", ".env"]
+
+env:
+  DEV_DATA_DIR: "./data/nap-data"
+
+tasks:
+  setup-pgadmin:
+    desc: Setup pgAdmin for managing the PostgreSQL database
+    cmds:
+      - echo "Setting up pgAdmin..."
+      - sudo chown -R 5050:5050 ./data/nap-pgadmin-data
+      - echo "pgAdmin setup complete. Permissions set to 5050:5050. for ./data/nap-pgadmin-data"
+
+  oapi-spec-gen:
+    desc: Generate the OpenAPI specification from the Go code
+    cmd: swag init -o oapispec
+
+  db-gen:
+    desc: Generate the database objects, querriers, etc.
+    cmd: sqlc generate
+
+  db-migrate-up-all:
+    desc: run the database migrations
+    dir: sqlc/migrations
+    cmd: migrate -source file://$(pwd) -database "postgres://$NAP_DB_USER:$NAP_DB_PASSWORD@$NAP_DB_HOST:$NAP_DB_PORT/$NAP_DB_NAME?sslmode=disable" up
+
+  db-migrate-down-all:
+    desc: rollback all the database migrations
+    dir: sqlc/migrations
+    cmd: migrate -source file://$(pwd) -database "postgres://$NAP_DB_USER:$NAP_DB_PASSWORD@$NAP_DB_HOST:$NAP_DB_PORT/$NAP_DB_NAME?sslmode=disable" down
+
+  dev:
+    desc: Run the development server
+    deps:
+      - tw-watch
+      - go-watch
+    silent: false
+    run: once
+
+  go-watch:
+    desc: Run the Go code in watch mode
+    cmds:
+      - CompileDaemon -exclude-dir .git -exclude-dir run-logs -exclude-dir public -exclude-dir run -exclude-dir data -include config.nbrglm.yaml -include *.html -include *.css -build "go build -o build/debug/backend" -command "./build/debug/backend serve --config config.nbrglm.yaml"
+
+  tw-watch:
+    desc: Run the Tailwind CSS CLI in watch mode
+    cmd: npx @tailwindcss/cli -i ./web/input.css -o ./web/public/index.css --watch
+
+  rebuild-db-dev:
+    desc: Rebuild the database
+    cmds:
+      - echo "Rebuilding the database..."
+      - echo "Stopping and removing existing containers..."
+      - docker compose down
+      - echo "Removing existing data directory..."
+      - sudo rm -rf ${DEV_DATA_DIR}
+      - echo "Creating new data directory..."
+      - mkdir -p ${DEV_DATA_DIR}
+      - echo "Starting the database containers..."
+      - docker compose up -d
+      - echo "Waiting for the database to start..."
+      - sleep 20
+      - echo "Running migrations..."
+      - task db-migrate-up-all
+      - echo "Database rebuild complete."

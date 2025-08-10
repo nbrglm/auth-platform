@@ -1,0 +1,162 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is the NBRGLM Auth Platform API documentation.",
+        "title": "NBRGLM Auth Platform",
+        "termsOfService": "https://nbrglm.com/auth-platform/terms",
+        "contact": {
+            "name": "NBRGLM Support",
+            "url": "https://nbrglm.com/support",
+            "email": "contact@nbrglm.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "0.1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/api/auth/signup": {
+            "post": {
+                "description": "Handles user registration requests via API.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User Signup API",
+                "parameters": [
+                    {
+                        "description": "User Signup Data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.UserSignupData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User Signup Result",
+                        "schema": {
+                            "$ref": "#/definitions/auth.UserSignupResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "auth.UserSignupData": {
+            "type": "object",
+            "required": [
+                "email",
+                "firstName",
+                "lastName",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "inviteToken": {
+                    "description": "Optional invite token for signup",
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "auth.UserSignupResult": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Code is an error code that can be used for programmatic handling of errors.",
+                    "type": "integer"
+                },
+                "debug": {
+                    "description": "DebugMessage is a technical message that can be used for debugging.",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Message is a user-friendly message that can be displayed to the end user.",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "CSRFTokenCookieAuth": {
+            "type": "apiKey",
+            "name": "nap_csrf_tk",
+            "in": "cookie"
+        },
+        "CSRFTokenHeaderAuth": {
+            "type": "apiKey",
+            "name": "X-CSRF-Token",
+            "in": "header"
+        },
+        "RefreshCookieAuth": {
+            "type": "apiKey",
+            "name": "nap_refresh_tk",
+            "in": "cookie"
+        },
+        "RefreshHeaderAuth": {
+            "type": "apiKey",
+            "name": "X-NAP-Refresh-Token",
+            "in": "header"
+        },
+        "SessionCookieAuth": {
+            "type": "apiKey",
+            "name": "nap_session_tk",
+            "in": "cookie"
+        },
+        "SessionHeaderAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    },
+    "externalDocs": {
+        "description": "NBRGLM Auth Platform Documentation",
+        "url": "https://nbrglm.com/auth-platform/docs"
+    }
+}

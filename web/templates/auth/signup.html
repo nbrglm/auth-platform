@@ -1,0 +1,239 @@
+{{define "auth/signup.html"}}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {{template "components/commonHead.html" .}}
+</head>
+
+{{if .PageError}}
+{{template "components/errorBody.html" .}}
+{{else}}
+
+<body
+  class="bg-surface min-h-screen flex flex-col md:flex-row justify-start md:justify-center items-center p-4 transition-colors text-on-surface"
+>
+  <div class="w-full flex flex-col md:flex-row justify-center items-center gap-4">
+    <!-- This is the image/branding part -->
+    <div class="w-full md:w-1/2 flex flex-col justify-start md:justify-center items-center">
+      <img
+        x-data
+        :src="$store.darkMode ? '/logo-dark.png' : '/logo.png'"
+        alt="Logo"
+        class="size-32 md:size-48 lg:size-64 rounded-lg shadow-lg"
+      >
+      <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold mt-4 text-on-surface">{{ .AppName }}</h1>
+    </div>
+
+    <!-- This is the card and form part -->
+    <form
+      id="signupForm"
+      action="/auth/signup/submit"
+      method="post"
+      class="w-full md:w-1/2 flex flex-col justify-center items-center"
+      x-data="{step: 1, fname: '', lname: '', pvis: false, cpvis: false}"
+    >
+      <div
+        x-show="step === 1"
+        x-transition:leave="transition ease-in duration-400"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-1/2"
+        x-transition:enter="transition ease-in duration-400"
+        x-transition:enter-start="opacity-0 -translate-y-1/2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        class="w-full md:w-1/2 flex flex-col md:flex-row justify-center items-center"
+      >
+        <div
+          class="w-full bg-container text-on-container rounded-2xl transition-shadow duration-300 hover:shadow-xl shadow-md dark:shadow-accent p-8 border-on-surface"
+        >
+          <div class="mb-6">
+            <h2 class="text-xl md:text-2xl font-semibold mb-2">Create your account</h2>
+            <p class="text-sm md:text-base text-muted-on-container">Enter your name to get started.</p>
+          </div>
+
+          <div
+            class="space-y-4"
+            x-ref="step1Form"
+          >
+            <!-- First Name -->
+            <div class="relative my-4">
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                autocomplete="given-name"
+                placeholder="First Name"
+                required
+                x-model="$data.fname"
+                data-validate-step-1
+                class="peer w-full text-lg px-3 pt-5 pb-2 bg-container border border-on-container rounded-md text-on-container placeholder-transparent focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+              >
+              <label
+                for="firstName"
+                class="absolute left-3 top-3 text-muted-on-container transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:-translate-y-3 peer-focus:px-1 peer-focus:bg-container peer-focus:text-accent peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-3 peer-[:not(:placeholder-shown)]:bg-container peer-[:not(:placeholder-shown)]:px-1"
+              >First
+                Name</label>
+            </div>
+
+            <!-- Last Name -->
+            <div class="relative my-4">
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                autocomplete="family-name"
+                placeholder="Last Name"
+                required
+                x-model="$data.lname"
+                class="peer w-full text-lg px-3 pt-5 pb-2 bg-container border border-on-container rounded-md text-on-container placeholder-transparent focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+                data-validate-step-1
+              >
+              <label
+                for="lastName"
+                class="absolute left-3 top-3 text-muted-on-container transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:-translate-y-3 peer-focus:px-1 peer-focus:bg-container peer-focus:text-accent peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-3 peer-[:not(:placeholder-shown)]:bg-container peer-[:not(:placeholder-shown)]:px-1"
+              >Last
+                Name</label>
+            </div>
+
+            <!-- Next Step Button -->
+            <div class="flex justify-end">
+              <button
+                type="button"
+                x-on:click="if ([...$refs.step1Form.querySelectorAll('[data-validate-step-1]')].every(input => input.reportValidity())) step = 2"
+                class="w-full bg-accent text-on-accent py-3 px-4 rounded-xl font-medium hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all duration-200"
+              >Next
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        x-show="step === 2"
+        x-transition:enter="transition ease-in duration-400"
+        x-transition:enter-start="opacity-0 translate-y-1/2"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-300"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 translate-y-1/2"
+        class="w-full md:w-1/2 flex flex-col md:flex-row justify-center items-center"
+      >
+        <div
+          class="w-full bg-container text-on-container rounded-2xl transition-shadow duration-300 hover:shadow-xl shadow-md dark:shadow-accent p-8 border-on-surface"
+        >
+
+          <div class="mb-6">
+            <h2 class="text-xl md:text-2xl font-semibold mb-2">Welcome, <span x-text="$data.fname"></span>&nbsp;<span
+                x-text="$data.lname"
+              ></span></h2>
+            <p class="text-sm md:text-base text-muted-on-container">Enter your email and create a strong password to
+              finish signing up.</p>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Email -->
+            <div class="relative my-4">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autocomplete="email"
+                placeholder="Email"
+                required
+                class="peer w-full text-lg px-3 pt-5 pb-2 bg-container border border-on-container rounded-md text-on-container placeholder-transparent focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+              >
+              <label
+                for="email"
+                class="absolute left-3 top-3 text-muted-on-container transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:-translate-y-3 peer-focus:px-1 peer-focus:bg-container peer-focus:text-accent peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-3 peer-[:not(:placeholder-shown)]:bg-container peer-[:not(:placeholder-shown)]:px-1"
+              >Email</label>
+            </div>
+
+            <!-- Password -->
+            <div class="w-full flex flex-col items-end justify-start my-4">
+              <div class="w-full relative mb-1">
+                <input
+                  id="password"
+                  name="password"
+                  :type="pvis ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="Password"
+                  required
+                  class="peer w-full text-lg px-3 pt-5 pb-2 bg-container border border-on-container rounded-md text-on-container placeholder-transparent focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+                >
+                <label
+                  for="password"
+                  class="absolute left-3 top-3 text-muted-on-container transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:-translate-y-3 peer-focus:px-1 peer-focus:bg-container peer-focus:text-accent peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-3 peer-[:not(:placeholder-shown)]:bg-container peer-[:not(:placeholder-shown)]:px-1"
+                >Password</label>
+              </div>
+
+              <button
+                type="button"
+                x-on:click="pvis = !pvis"
+                class="text-muted-on-container hover:text-accent transition-all"
+              >
+                <span x-show="!pvis">Show</span>
+                <span x-show="pvis">Hide</span>
+              </button>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="w-full flex flex-col items-end justify-start my-4">
+              <div class="w-full relative mb-1">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  :type="cpvis ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  placeholder="Confirm Password"
+                  required
+                  class="peer w-full text-lg px-3 pt-5 pb-2 bg-container border border-on-container rounded-md text-on-container placeholder-transparent focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+                >
+                <label
+                  for="confirmPassword"
+                  class="absolute left-3 top-3 text-muted-on-container transition-all peer-placeholder-shown:top-4 peer-placeholder-shown:text-base peer-focus:top-0 peer-focus:-translate-y-3 peer-focus:px-1 peer-focus:bg-container peer-focus:text-accent peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-3 peer-[:not(:placeholder-shown)]:bg-container peer-[:not(:placeholder-shown)]:px-1"
+                >Confirm
+                  Password</label>
+              </div>
+              <button
+                type="button"
+                x-on:click="cpvis = !cpvis"
+                class="text-muted-on-container hover:text-accent transition-all"
+              >
+                <span x-show="!cpvis">Show</span>
+                <span x-show="cpvis">Hide</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="flex justify-end gap-4">
+            <button
+              type="button"
+              x-on:click="step = 1"
+              class="w-full bg-accent text-on-accent py-3 px-4 rounded-xl font-medium hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all duration-200"
+            >Previous
+            </button>
+
+            <button
+              type="submit"
+              class="w-full bg-accent text-on-accent py-3 px-4 rounded-xl font-medium hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all duration-200"
+            >Create Account
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden field for csrf_token -->
+      <input
+        type="hidden"
+        name="{{.CSRFTokenName}}"
+        value="{{.CSRFTokenValue}}"
+      >
+    </form>
+  </div>
+
+</body>
+{{end}}
+
+</html>
+{{end}}

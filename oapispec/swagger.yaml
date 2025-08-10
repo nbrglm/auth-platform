@@ -1,0 +1,116 @@
+basePath: /
+definitions:
+  auth.UserSignupData:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      inviteToken:
+        description: Optional invite token for signup
+        type: string
+      lastName:
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - firstName
+    - lastName
+    - password
+    type: object
+  auth.UserSignupResult:
+    properties:
+      message:
+        type: string
+      userId:
+        type: string
+    type: object
+  models.ErrorResponse:
+    properties:
+      code:
+        description: Code is an error code that can be used for programmatic handling
+          of errors.
+        type: integer
+      debug:
+        description: DebugMessage is a technical message that can be used for debugging.
+        type: string
+      message:
+        description: Message is a user-friendly message that can be displayed to the
+          end user.
+        type: string
+    type: object
+externalDocs:
+  description: NBRGLM Auth Platform Documentation
+  url: https://nbrglm.com/auth-platform/docs
+host: localhost:8080
+info:
+  contact:
+    email: contact@nbrglm.com
+    name: NBRGLM Support
+    url: https://nbrglm.com/support
+  description: This is the NBRGLM Auth Platform API documentation.
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://nbrglm.com/auth-platform/terms
+  title: NBRGLM Auth Platform
+  version: 0.1.0
+paths:
+  /api/auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Handles user registration requests via API.
+      parameters:
+      - description: User Signup Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UserSignupData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User Signup Result
+          schema:
+            $ref: '#/definitions/auth.UserSignupResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: User Signup API
+      tags:
+      - Auth
+securityDefinitions:
+  CSRFTokenCookieAuth:
+    in: cookie
+    name: nap_csrf_tk
+    type: apiKey
+  CSRFTokenHeaderAuth:
+    in: header
+    name: X-CSRF-Token
+    type: apiKey
+  RefreshCookieAuth:
+    in: cookie
+    name: nap_refresh_tk
+    type: apiKey
+  RefreshHeaderAuth:
+    in: header
+    name: X-NAP-Refresh-Token
+    type: apiKey
+  SessionCookieAuth:
+    in: cookie
+    name: nap_session_tk
+    type: apiKey
+  SessionHeaderAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
