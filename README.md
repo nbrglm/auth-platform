@@ -20,9 +20,7 @@ Built to be simple to use, easy to deploy, and flexible for both startups and in
 
 ## Documentation
 
-Official documentation is a work in progress and will be available soon at:
-
-**https://docs.nbrglm.com**
+Official documentation is a work in progress, available at: **https://docs.nbrglm.com**
 
 ## Why NAP?
 
