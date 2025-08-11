@@ -33,8 +33,8 @@ func RegisterAPIRoutes(engine *gin.Engine) {
 	refreshTokenHandler := NewRefreshTokenHandler()
 	refreshTokenHandler.Register(engine)
 
-	// logoutHandler := NewLogoutHandler()
-	// logoutHandler.Register(engine)
+	logoutHandler := NewLogoutHandler()
+	logoutHandler.Register(engine)
 
 	// UI routes
 	signupWEBHandler := NewSignupWEBHandler()

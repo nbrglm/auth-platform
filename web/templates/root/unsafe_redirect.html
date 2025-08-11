@@ -7,58 +7,63 @@
 </head>
 
 <body
-  class="bg-surface min-h-screen flex flex-col md:flex-row justify-start md:justify-center items-center p-4 transition-colors text-on-surface"
+  class="bg-surface min-h-screen flex flex-col justify-start md:justify-center items-center transition-colors text-on-surface"
 >
-  <div class="w-full flex flex-col md:flex-row justify-center items-center gap-4">
-    <!-- This is the image/branding part -->
-    <div class="w-full md:w-1/2 flex flex-col justify-start md:justify-center items-center">
-      <img
-        x-data
-        :src="$store.darkMode ? '/logo-dark.png' : '/logo.png'"
-        alt="Logo"
-        class="size-32 md:size-48 lg:size-64 rounded-lg shadow-lg pulse-shadow pulse-accent"
-      >
-      <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold mt-4 text-on-surface">{{ .AppName }}</h1>
-    </div>
+  <!-- Main content wrapper that grows to fill space -->
+  <div class="flex-1 w-full flex flex-col md:flex-row justify-center items-center gap-4 pt-4 px-4">
+    <div class="w-full flex flex-col md:flex-row justify-center items-center gap-4">
+      <!-- This is the image/branding part -->
+      <div class="w-full md:w-1/2 flex flex-col justify-start md:justify-center items-center">
+        <img
+          x-data
+          :src="$store.darkMode ? '/logo-dark.png' : '/logo.png'"
+          alt="Logo"
+          class="size-32 md:size-48 lg:size-64 rounded-lg shadow-lg md:shadow-2xl pulse-shadow pulse-accent"
+        >
+        <h1 class="text-2xl md:text-3xl lg:text-4xl font-bold mt-4 text-on-surface">{{ .AppName }}</h1>
+      </div>
 
-    <div class="w-full md:w-1/2 flex flex-col justify-center items-center">
-      <div
-        class="w-full md:w-1/2 bg-container text-on-container rounded-2xl transition-shadow duration-300 hover:shadow-xl shadow-md dark:shadow-accent p-8 border-on-surface"
-      >
-        <div class="mb-6">
-          <h2 class="text-xl md:text-2xl font-semibold mb-2">
-            {{if .RedirectURL }}Unsafe{{ else }}No{{ end }}&nbsp;Redirection Provided</h2>
-          <p class="text-sm md:text-base text-muted-on-container">
-            {{ if .RedirectURL }} The page you were trying to return to is not allowed for security reasons. If you
-            believe this is a mistake, contact support.
-            <br />
-            <span class="text-muted-on-container">URL: {{ .RedirectURL }}</span>
-            {{ else }}
-            <span class="text-muted-on-container">No redirection url was provided, would you like to go back to
-              home?</span>
-            {{ end }}
-          </p>
-        </div>
+      <div class="w-full md:w-1/2 flex flex-col justify-center items-center">
+        <div
+          class="w-full md:w-1/2 bg-container text-on-container rounded-2xl transition-shadow duration-300 hover:shadow-xl shadow-md dark:shadow-accent p-8 border-on-surface"
+        >
+          <div class="mb-6">
+            <h2 class="text-xl md:text-2xl font-semibold mb-2">
+              {{if .RedirectURL }}Unsafe{{ else }}No{{ end }}&nbsp;Redirection Provided</h2>
+            <p class="text-sm md:text-base text-muted-on-container">
+              {{ if .RedirectURL }} The page you were trying to return to is not allowed for security reasons. If you
+              believe this is a mistake, contact support.
+              <br />
+              <span class="text-muted-on-container">URL: {{ .RedirectURL }}</span>
+              {{ else }}
+              <span class="text-muted-on-container">No redirection url was provided, would you like to go back to
+                home?</span>
+              {{ end }}
+            </p>
+          </div>
 
-        <div class="flex justify-end gap-4">
-          <button
-            x-data
-            @click="window.location.href = '{{.SupportURL}}'"
-            class="w-full bg-accent text-on-accent py-3 px-4 rounded-xl font-medium hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all duration-200"
-          >Contact Support
-          </button>
+          <div class="flex justify-end gap-4">
+            <button
+              x-data
+              @click="window.location.href = '{{.SupportURL}}'"
+              class="w-full bg-accent text-on-accent py-3 px-4 rounded-xl font-medium hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all duration-200"
+            >Contact Support
+            </button>
 
-          <button
-            x-data
-            @click="window.location.href = '/'"
-            class="w-full bg-accent text-on-accent py-3 px-4 rounded-xl font-medium hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all duration-200"
-          >Go
-            Home
-          </button>
+            <button
+              x-data
+              @click="window.location.href = '/'"
+              class="w-full bg-accent text-on-accent py-3 px-4 rounded-xl font-medium hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 transition-all duration-200"
+            >Go
+              Home
+            </button>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  {{template "components/nbrglmFooter.html" .}}
 
 </body>
 

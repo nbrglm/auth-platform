@@ -1,0 +1,27 @@
+{{define "components/nbrglmFooter.html"}}
+<footer class="w-full flex flex-col md:flex-row items-center justify-center bg-container p-2">
+  <div class="flex flex-col md:flex-row gap-2 items-center justify-center">
+    <p class="text-sm text-gray-600">©<span x-text="(new Date()).getFullYear()"></span> {{.CompanyName}}.</p>
+    <p class="text-sm text-gray-600">All rights reserved.</p>
+
+    {{if .NBRGLMBranding}}
+    <div class="flex flex-row items-center justify-center space-x-1">
+      <p class="text-sm text-on-container">Secured by</p>
+      <img
+        src="/nbrglm/favicon.png"
+        alt="Logo"
+        class="h-4 rounded-md shadow-md"
+      >
+      <a
+        href="https://docs.nbrglm.com/auth-platform"
+        class="text-on-container hover:underline text-sm"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        NAP
+      </a>
+    </div>
+  </div>
+  {{end}}
+</footer>
+{{end}}

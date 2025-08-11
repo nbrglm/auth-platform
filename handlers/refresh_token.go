@@ -1,19 +1,14 @@
 package handlers
 
 import (
-	"context"
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/nbrglm/auth-platform/db"
 	"github.com/nbrglm/auth-platform/internal"
+	"github.com/nbrglm/auth-platform/internal/auth"
 	"github.com/nbrglm/auth-platform/internal/metrics"
 	"github.com/nbrglm/auth-platform/internal/middlewares"
 	"github.com/nbrglm/auth-platform/internal/models"
-	"github.com/nbrglm/auth-platform/internal/store"
 	"github.com/nbrglm/auth-platform/internal/tokens"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/codes"
@@ -59,10 +54,6 @@ func (h *RefreshTokenHandler) Register(engine *gin.Engine) {
 	engine.GET("/auth/s/refresh", middlewares.RateLimitUIAuthenticatedMiddleware(), h.HandleRefreshTokenWEB)
 }
 
-type RefreshTokenData struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
 // HandleRefreshTokenAPI godoc
 // @Summary Refresh Token API
 // @Description Handles token refresh requests via API.
@@ -80,7 +71,7 @@ func (h *RefreshTokenHandler) HandleRefreshTokenAPI(c *gin.Context) {
 	ctx, log, span := internal.WithContext(c.Request.Context(), "refresh_token_api")
 	defer span.End() // Ensure the span is ended to avoid memory leaks
 
-	var refreshData RefreshTokenData
+	var refreshData auth.RefreshTokenData
 	if err := c.ShouldBindJSON(&refreshData); err != nil {
 		h.RefreshAPICounter.WithLabelValues("invalid_input").Inc()
 		log.Debug("Invalid input data", zap.Error(err))
@@ -88,7 +79,7 @@ func (h *RefreshTokenHandler) HandleRefreshTokenAPI(c *gin.Context) {
 		return
 	}
 
-	result, err := handleRefresh(ctx, log, refreshData)
+	result, err := auth.HandleRefresh(ctx, log, refreshData)
 	result = ProcessAPIResult(c, result, err, span, log, h.RefreshAPICounter, "refresh_token_api")
 	if result == nil {
 		return
@@ -129,11 +120,11 @@ func (h *RefreshTokenHandler) HandleRefreshTokenWEB(c *gin.Context) {
 		return
 	}
 
-	refreshData := RefreshTokenData{
+	refreshData := auth.RefreshTokenData{
 		RefreshToken: c.GetString(middlewares.CtxSessionRefreshTokenKey),
 	}
 
-	result, err := handleRefresh(ctx, log, refreshData)
+	result, err := auth.HandleRefresh(ctx, log, refreshData)
 	log.Debug("Refresh tokens result", zap.Any("result", result), zap.Error(err))
 
 	if err != nil {
@@ -162,131 +153,4 @@ func (h *RefreshTokenHandler) HandleRefreshTokenWEB(c *gin.Context) {
 	h.RefreshWEBCounter.WithLabelValues("success").Inc()
 	span.SetStatus(codes.Ok, "Tokens refreshed successfully")
 	c.Redirect(http.StatusSeeOther, middlewares.GetRedirectURLWithReturnTo(c, "/auth/login"))
-}
-
-type SessionRefreshResult struct {
-	Tokens      *tokens.Tokens
-	ShouldLogin bool `json:"shouldLogin"`
-}
-
-func handleRefresh(ctx context.Context, log *zap.Logger, refreshData RefreshTokenData) (*SessionRefreshResult, *models.ErrorResponse) {
-	log.Debug("Starting token refresh process", zap.String("refreshToken", refreshData.RefreshToken))
-
-	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		log.Debug("Failed to begin transaction", zap.Error(err))
-		return nil, models.NewErrorResponse(
-			models.GenericErrorMessage,
-			"Failed to begin transaction",
-			http.StatusInternalServerError,
-			err,
-		)
-	}
-
-	q := store.Querier.WithTx(tx)
-	log.Debug("Transaction begun successfully")
-
-	_, refreshTokenHash := tokens.HashTokens(&tokens.Tokens{
-		RefreshToken: refreshData.RefreshToken,
-	})
-	log.Debug("Refresh token hashed")
-
-	session, err := q.GetSessionByRefreshToken(ctx, refreshTokenHash)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			log.Debug("No session found for refresh token")
-			return &SessionRefreshResult{
-				ShouldLogin: true,
-			}, nil
-		}
-		log.Debug("Error retrieving session", zap.Error(err))
-		return nil, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve session", http.StatusInternalServerError, err)
-	}
-	log.Debug("Session retrieved successfully", zap.String("sessionID", session.ID.String()))
-
-	revoked, err := tokens.HasTokenBeenRevoked(ctx, q, session.ID)
-	if err != nil {
-		log.Debug("Error checking token revocation status", zap.Error(err))
-		return nil, models.NewErrorResponse(models.GenericErrorMessage, "Unable to check token status", http.StatusInternalServerError, err)
-	}
-
-	// If the token has been revoked, return an error
-	if revoked {
-		log.Debug("Token has been revoked", zap.String("sessionID", session.ID.String()))
-		return &SessionRefreshResult{
-			ShouldLogin: true,
-		}, nil
-	}
-	log.Debug("Token is valid and not revoked")
-
-	newTokenInfo, err := q.GetInfoForSessionRefresh(ctx, db.GetInfoForSessionRefreshParams{
-		UserID: session.UserID,
-		OrgID:  session.OrgID,
-	})
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			log.Debug("User or org info not found for session",
-				zap.String("userID", session.UserID.String()),
-				zap.String("orgID", session.OrgID.String()))
-			// Either user or org associated with this session was not found, or the user has been banned.
-			return &SessionRefreshResult{
-				ShouldLogin: true,
-			}, nil
-		}
-		log.Debug("Error retrieving session info", zap.Error(err))
-		return nil, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve session info", http.StatusInternalServerError, err)
-	}
-	log.Debug("User and org info retrieved successfully")
-
-	avatarUrl := ""
-	if newTokenInfo.UserAvatarUrl != nil {
-		avatarUrl = *newTokenInfo.UserAvatarUrl
-	}
-
-	log.Debug("Generating new token pair")
-	newTokenPair, err := tokens.RefreshSessionTokens(session, tokens.AuthPlatformClaims{
-		OrgSlug: newTokenInfo.OrgSlug,
-		OrgName: newTokenInfo.OrgName,
-		OrgId:   session.OrgID.String(),
-
-		Email:         newTokenInfo.UserEmail,
-		EmailVerified: newTokenInfo.UserEmailVerified,
-		UserFname:     *newTokenInfo.UserFname,
-		UserLname:     *newTokenInfo.UserLname,
-		UserAvatarURL: avatarUrl,
-		UserOrgRole:   newTokenInfo.UserOrgRole,
-	})
-	if err != nil {
-		log.Debug("Error generating new tokens", zap.Error(err))
-		return nil, models.NewErrorResponse(models.GenericErrorMessage, "Unable to generate new tokens", http.StatusInternalServerError, err)
-	}
-	log.Debug("New token pair generated successfully")
-
-	newSessionTokenHash, newRefreshTokenHash := tokens.HashTokens(newTokenPair)
-
-	_, err = q.RefreshSession(ctx, db.RefreshSessionParams{
-		ID:               session.ID,
-		RefreshTokenHash: &newRefreshTokenHash,
-		TokenHash:        &newSessionTokenHash,
-		ExpiresAt: pgtype.Timestamptz{
-			Time:  newTokenPair.RefreshTokenExpiry,
-			Valid: true,
-		},
-	})
-
-	if err != nil {
-		log.Debug("Error refreshing session in database", zap.Error(err))
-		return nil, models.NewErrorResponse(models.GenericErrorMessage, "Unable to refresh session", http.StatusInternalServerError, err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		log.Error("Failed to commit transaction", zap.Error(err))
-		return nil, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err)
-	}
-
-	log.Debug("Session refreshed successfully", zap.String("sessionID", session.ID.String()))
-	return &SessionRefreshResult{
-		Tokens: newTokenPair,
-	}, nil
 }

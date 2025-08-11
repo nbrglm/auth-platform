@@ -153,12 +153,12 @@ security:
   cookie:
     # The signing key file for the cookies.
     # This is used to sign the cookies to prevent tampering.
-    signingKeyFile: $NBRGLM_HOME/workspace/accounts-go/run/cookie-signing-key
+    signingKeyFile: $NBRGLM_HOME/workspace/auth-platform/run/cookie-signing-key
 
   # CSRF security settings.
   csrf:
     # The secret file for CSRF protection.
-    secretFile: $NBRGLM_HOME/workspace/accounts-go/run/csrf-secret
+    secretFile: $NBRGLM_HOME/workspace/auth-platform/run/csrf-secret
 
     # The csrf token name in the form fields. (Default: nap-csrf-tk)
     tokenName: nap-csrf-tk
@@ -235,10 +235,10 @@ security:
 # JWT configuration for the auth platform.
 jwt:
   # The private key file for signing the JWT tokens. (RS256 algorithm)
-  privateKeyFile: $NBRGLM_HOME/workspace/accounts-go/run/keys/private.pem
+  privateKeyFile: $NBRGLM_HOME/workspace/auth-platform/run/keys/private.pem
 
   # The public key file for verifying the JWT tokens. (RS256 algorithm)
-  publicKeyFile: $NBRGLM_HOME/workspace/accounts-go/run/keys/public.pem
+  publicKeyFile: $NBRGLM_HOME/workspace/auth-platform/run/keys/public.pem
 
   # Session token expiration time in seconds (default: 1hr, 3600).
   sessionTokenExpiration: 3600
@@ -270,13 +270,13 @@ branding:
   supportURL: https://support.nbrglm.com
 
   # The path to the logo file for the application.
-  logoFile: $NBRGLM_HOME/workspace/accounts-go/run/images/logo.png
+  logoFile: $NBRGLM_HOME/workspace/auth-platform/run/images/logo.png
 
   # The path to the logo file for the application in dark mode.
-  logoDarkFile: $NBRGLM_HOME/workspace/accounts-go/run/images/logo.png
+  logoDarkFile: $NBRGLM_HOME/workspace/auth-platform/run/images/logo.png
 
   # The path to favicon file for the application.
-  faviconFile: $NBRGLM_HOME/workspace/accounts-go/run/images/favicon.png
+  faviconFile: $NBRGLM_HOME/workspace/auth-platform/run/images/favicon.png
 # If in case, you require to remove the nbrglm branding from the auth platform UI,
 # you can set this to false.
 # nbrglmBranding: false
