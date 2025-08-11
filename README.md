@@ -57,6 +57,8 @@ cd auth-platform
 
 # Start with Docker Compose
 docker-compose up -d
+
+task dev
 ```
 
 > **Note:** On Windows:
