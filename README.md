@@ -4,9 +4,11 @@
 
 Built to be simple to use, easy to deploy, and flexible for both startups and individual developers who want full control over their authentication system.
 
+> ⚠️ Codebase is currently being cleaned up and will be pushed soon. Stay tuned!
+
 ## Features
 
-- Multi-Tenant Architecture
+- Multi-Tenant Architecture  
 - Email/Password Authentication  
 - Secure Session Management  
 - Fully Self-Hostable  
