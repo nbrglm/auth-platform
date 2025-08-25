@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@source not "../data";
+@source not "../.data";
 
 /* Show Scrollbar always */
 html {
@@ -64,51 +64,55 @@ button {
 
 :root {
   --color-surface-bg: #f0f1f4;
-  --color-container-bg: #d6dae3;
+  --color-container-bg: #ffffff;
   --color-thing-on-surface: #0f172a;
-  --color-thing-on-container: #1e293b;
+  --color-thing-on-container: #0f172a;
   --color-text-muted-on-surface: #58687e;
-  --color-text-muted-on-container: #394350;
+  --color-text-muted-on-container: #64748b;
+  --color-separator-on-surface: #d1d5db;
+  --color-separator-on-container: #e2e8f0;
   --color-hover-on-surface: #eff1f5;
   --color-hover-on-container: #a8b0be;
 
-  --color-error: #dc2626;
-  --color-error-bg: #fef2f2;
-  --color-on-error: #ffffff;
-  --color-warning: #d97706;
-  --color-warning-bg: #fffbeb;
-  --color-on-warning: #ffffff;
-  --color-success: #16a34a;
-  --color-success-bg: #f0fdf4;
-  --color-on-success: #ffffff;
+  --color-error: #f87171;
+  --color-error-bg: #fee2e2;
+  --color-on-error: #991b1b;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #fef3c7;
+  --color-on-warning: #92400e;
+  --color-success: #4ade80;
+  --color-success-bg: #dcfce7;
+  --color-on-success: #166534;
 
-  --color-accent: #155dfc;
-  --color-accent-hover: #1447e6;
+  --color-accent: #1447e6;
+  --color-accent-hover: #155dfc;
   --color-on-accent: #ffffff;
 }
 
 [data-theme="dark"] {
   --color-surface-bg: #09090b;
-  --color-container-bg: #1e2939;
+  --color-container-bg: #1d293d;
   --color-thing-on-surface: #f1f5f9;
-  --color-thing-on-container: #e2e8f0;
+  --color-thing-on-container: #ffffff;
   --color-text-muted-on-surface: #94a3b8;
-  --color-text-muted-on-container: #a8afba;
+  --color-text-muted-on-container: #94a3b8;
+  --color-separator-on-surface: #3f3f46;
+  --color-separator-on-container: #334155;
   --color-hover-on-surface: #27272a;
   --color-hover-on-container: #334155;
 
   --color-error: #f87171;
-  --color-error-bg: #450a0a;
-  --color-on-error: #0f172a;
+  --color-error-bg: #7f1d1d;
+  --color-on-error: #fecaca;
   --color-warning: #fbbf24;
-  --color-warning-bg: #451a03;
-  --color-on-warning: #0f172a;
+  --color-warning-bg: #78350f;
+  --color-on-warning: #fde68a;
   --color-success: #4ade80;
   --color-success-bg: #14532d;
-  --color-on-success: #0f172a;
+  --color-on-success: #bbf7d0;
 
-  --color-accent: #2b7fff;
-  --color-accent-hover: #155dfc;
+  --color-accent: #155dfc;
+  --color-accent-hover: #2b7fff;
   --color-on-accent: #ffffff;
 }
 
@@ -119,6 +123,8 @@ button {
   --color-on-container: var(--color-thing-on-container);
   --color-muted-on-container: var(--color-text-muted-on-container);
   --color-muted-on-surface: var(--color-text-muted-on-surface);
+  --color-separator-on-surface: var(--color-separator-on-surface);
+  --color-separator-on-container: var(--color-separator-on-container);
   --color-hover-container: var(--color-hover-on-container);
   --color-hover-surface: var(--color-hover-on-surface);
 

@@ -4,8 +4,6 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"html/template"
-	"io/fs"
 	"net/http"
 	"os"
 	"os/signal"
@@ -71,45 +69,9 @@ func runServer(cmd *cobra.Command, webFS embed.FS) {
 	engine := gin.Default()
 	if opts.Debug {
 		gin.SetMode(gin.DebugMode)
-
-		// Load templates and other files
-		engine.LoadHTMLGlob("web/templates/**/*.html")
-		engine.StaticFileFS("/darkMode.js", "web/public/darkMode.js", http.FS(webFS))
-		engine.StaticFileFS("/index.css", "web/public/index.css", http.FS(webFS))
 	} else {
 		gin.SetMode(gin.ReleaseMode)
-
-		// Load templates and other files
-		tmpl, err := template.ParseFS(webFS, "web/templates/**/*.html")
-		if err != nil {
-			logging.Logger.Error("Error loading templates", zap.Error(err))
-			os.Exit(1)
-			return
-		}
-		engine.SetHTMLTemplate(tmpl)
-
-		publicFs, err := fs.Sub(webFS, "web/public")
-		if err != nil {
-			logging.Logger.Error("Error creating public file system", zap.Error(err))
-			os.Exit(1)
-			return
-		}
-
-		fileSrv := http.FileServer(http.FS(publicFs))
-		engine.GET("/*.css", gin.WrapH(fileSrv))
-		engine.GET("/*.js", gin.WrapH(fileSrv))
-		engine.GET("/*.png", gin.WrapH(fileSrv))
-		engine.GET("/*.svg", gin.WrapH(fileSrv))
-		engine.GET("/*.ico", gin.WrapH(fileSrv))
 	}
-
-	// Add the Branding
-	engine.StaticFileFS("/nbrglm/favicon.png", "web/public/nbrglm/favicon.png", http.FS(webFS))
-	engine.StaticFileFS("/nbrglm/logo.png", "web/public/nbrglm/logo.png", http.FS(webFS))
-
-	engine.StaticFile("/favicon.png", config.Branding.FaviconFile)
-	engine.StaticFile("/logo.png", config.Branding.LogoFile)
-	engine.StaticFile("/logo-dark.png", config.Branding.LogoDarkFile)
 
 	// Add CORS middleware
 	middlewares.InitCORS(engine)
@@ -125,19 +87,12 @@ func runServer(cmd *cobra.Command, webFS embed.FS) {
 	// 	c.Next()
 	// })
 
-	// Add the token middleware
-	engine.Use(middlewares.TokenMiddleware())
+	// Add the API Key middleware, before rate limiting middlewares,
+	// since those need access to keys for rate limiting
+	engine.Use(middlewares.APIKeyMiddleware())
 
-	// TODO: Remove this middleware once the cookie handling is done properly.
-	// engine.Use(func(c *gin.Context) {
-	// 	cR, _ := c.Cookie("nap-refresh-tk")
-	// 	cS, _ := c.Cookie("nap-session-tk")
-	// 	fmt.Printf("\nAFTER: \nRAW COOKIE HEADER: %s\nRefresh: %s\nSession: %s\nPATH: %s\n", c.Request.Header.Get("Cookie"), cR, cS, c.Request.URL.Path)
-	// 	logging.Logger.Debug("Checking session status",
-	// 		zap.Bool("refresh_needed", c.GetBool(middlewares.CtxSessionRefreshKey)),
-	// 		zap.Bool("session_exists", c.GetBool(middlewares.CtxSessionExistsKey)))
-	// 	c.Next()
-	// })
+	// Add the returnTo URL middleware
+	engine.Use(middlewares.ReturnToURLMiddleware())
 
 	// Add the middleware for storing page errors in the context
 	// by retrieving them from the cookies.
@@ -178,16 +133,16 @@ func runServer(cmd *cobra.Command, webFS embed.FS) {
 	// Register the routes
 	handlers.RegisterAPIRoutes(engine)
 
-	engine.GET("/", func(ctx *gin.Context) {
-		claims, exists := ctx.Get(middlewares.CtxSessionTokenClaimsKey)
-		if !exists {
-			ctx.JSON(http.StatusOK, gin.H{
-				"message": "Welcome to the NBRGLM Auth Platform! Please login or signup to continue.",
-			})
-			return
-		}
-		ctx.JSON(http.StatusOK, claims)
-	})
+	// engine.GET("/", func(ctx *gin.Context) {
+	// 	claims, exists := ctx.Get(middlewares.CtxSessionTokenClaimsKey)
+	// 	if !exists {
+	// 		ctx.JSON(http.StatusOK, gin.H{
+	// 			"message": "Welcome to the NBRGLM Auth Platform! Please login or signup to continue.",
+	// 		})
+	// 		return
+	// 	}
+	// 	ctx.JSON(http.StatusOK, claims)
+	// })
 
 	// Initialize the metrics collection system
 	//
@@ -244,8 +199,15 @@ func runServer(cmd *cobra.Command, webFS embed.FS) {
 	}
 
 	// Connect with the database
-	if err := store.InitDB(); err != nil {
+	if err := store.InitDB(context.Background()); err != nil {
 		logging.Logger.Error("Failed to initialize database connection pool", zap.Error(err))
+		logging.ShutdownLogger(context.Background())
+		os.Exit(1)
+	}
+
+	// Initialize the s3 store
+	if err := store.InitS3Store(context.Background()); err != nil {
+		logging.Logger.Error("Failed to initialize S3 store", zap.Error(err))
 		logging.ShutdownLogger(context.Background())
 		os.Exit(1)
 	}

@@ -20,7 +20,7 @@ const CtxSessionTokenKey = "sessionToken"
 const CtxSessionTokenClaimsKey = "sessionTokenClaims"
 const CtxSessionRefreshTokenKey = "refreshToken"
 
-func TokenMiddleware() gin.HandlerFunc {
+func APIKeyMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Put the token info, like claims, the tokens themselves, etc. into the context.
 		session, refresh := ExpandContextWithInfo(ctx)

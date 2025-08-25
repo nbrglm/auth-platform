@@ -1,0 +1,270 @@
+{{define "updateAvatar.html"}}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  {{template "components/commonHead.html" .}}
+  <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/4.9.1/filerobot-image-editor.min.js">
+  </script>
+
+  <script>
+    const imageTypes = "image/png,image/jpeg,image/jpg,image/webp";
+    let imageEditor = null;
+
+    function cleanupOnClose() {
+      if (imageEditor) {
+        imageEditor.terminate();
+        imageEditor = null;
+        document.getElementById('imageEditorContainer').innerHTML = "";
+      }
+      Alpine.store('imageEditor').setLoaded(false)
+      document.getElementById('avatarInput').value = "";
+    }
+
+    function handleSelectImage(event) {
+      let alerts = Alpine.store('alerts');
+
+      const file = event.target.files[0];
+      if (!file) return;
+
+      let validTypes = imageTypes.split(",");
+      if (!validTypes.includes(file.type)) {
+        event.target.value = "";
+        alerts.add(`Invalid file type! Please choose one of: ${validTypes.map((val) => val.replace("image/", "")).join(", ")}`, alerts.kindError)
+        document.getElementById("updateAvatarModal").close()
+        return;
+      }
+
+      const url = URL.createObjectURL(file);
+      const imageEditorContainer = document.getElementById('imageEditorContainer');
+
+      const { TABS, TOOLS } = window.FilerobotImageEditor;
+
+      console.log("TABS", TABS);
+      console.log("TOOLS", TOOLS);
+      console.log("FilerobotImageEditor", window.FilerobotImageEditor);
+
+      const editorConfig = {
+        source: url,
+        annotationsCommon: {
+          fill: '#ff0000'
+        },
+        tabsIds: [TABS.ADJUST, TABS.FINETUNE],
+        defaultTabId: TABS.ADJUST,
+        defaultToolId: TOOLS.CROP,
+        defaultSavedImageName: 'avatar',
+        defaultSavedImagequality: 0.8,
+        defaultSavedImageType: 'jpg',
+        avoidChangesNotSavedAlertOnLeave: true,
+        Crop: {
+          noPresets: true,
+          ratio: 1,
+          maxWidth: 320,
+          maxHeight: 320,
+          // minWidth: 320,
+          // minHeight: 320,
+          autoResize: true,
+          ratioTitleKey: 'authPlatformAvatar',
+        },
+        removeSaveButton: true,
+        translations: {
+          authPlatformAvatar: "Avatar (1:1)",
+          authPlatformAvatarDesc: "Your profile picture will be cropped to a square (1:1) aspect ratio."
+        },
+        image: {
+          // Don't allow user to upload another image from inside the editor
+          disableUpload: true,
+        },
+        onSave(imgData, imgDesignState) {
+          console.log('saving image with data: ', imgData);
+        },
+      }
+
+      // Clear previous editor instance if exists
+      if (imageEditor) {
+        imageEditor.terminate();
+        imageEditor = null;
+        imageEditorContainer.innerHTML = "";
+      }
+
+      imageEditor = new window.FilerobotImageEditor(
+        imageEditorContainer,
+        editorConfig,
+      );
+
+      console.log("imageEditor", imageEditor);
+      Alpine.store('imageEditor').setLoaded(true)
+
+      imageEditor.render({
+        onClose: (closingReason) => {
+          cleanupOnClose();
+
+          // We don't do processing here because we want user to explicitly click on save button
+        }
+      })
+    }
+
+    // show the preview of the edited image
+    async function handleSave() {
+      let alerts = Alpine.store('alerts');
+      const action = "/update-avatar";
+      const method = "post";
+
+      if (!imageEditor) {
+        alerts.add("No image to save! Please select an image first.", alerts.kindError)
+        cleanupOnClose();
+        return;
+      }
+
+      try {
+        // params: img info object, pixelRatio, keepLoadingSpinnerShown
+        const imageRes = imageEditor.getCurrentImgData({ name: 'avatar', extension: 'jpg', quality: 0.8, size: { width: 320, height: 320 } }, false, true);
+        console.log("Got image data to save: ", imageRes);
+        setTimeout(() => imageRes.hideLoadingSpinner(), 5000);
+
+        // Get the data
+        const csrfToken = document.getElementById('csrfToken').value;
+        const csrfTokenName = document.getElementById('csrfToken').name;
+
+        const canvas = imageRes.imageData.imageCanvas;
+        const file = await canvasToFile(canvas, 'avatar', 0.8);
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+        formData.append(csrfTokenName, csrfToken);
+
+        const res = await fetch(action, {
+          method: method,
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const body = await res.json();
+          const errMsg = body.message || "Failed to update avatar! Please try again.";
+          alerts.add(errMsg, alerts.kindError, 5000);
+          cleanupOnClose();
+          return;
+        }
+        const body = await res.json();
+        const msg = body.message || "Avatar updated successfully! It may take some time to update everywhere."
+        alerts.add(msg, alerts.kindSuccess, 3000);
+        cleanupOnClose();
+        // Redirect to profile page after a short delay to show success message and refresh the token
+        setTimeout(() => { window.location.href = "/" }, 3000);
+        return;
+      } catch (error) {
+        console.error("Error getting image data: ", error);
+        alerts.add("Error processing the image! Please try again.", alerts.kindError)
+        cleanupOnClose();
+        return;
+      }
+    }
+
+    function canvasToFile(canvas, filename = "avatar", quality = 0.8) {
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("Canvas is empty or failed to export"));
+              return;
+            }
+            resolve(new File([blob], filename, { type: "image/jpeg" }));
+          },
+          "image/jpeg",
+          quality
+        );
+      });
+    }
+  </script>
+</head>
+
+{{if .PageError}}
+{{template "components/errorBody.html" .}}
+{{else}}
+
+<body class="bg-surface min-h-screen flex flex-row justify-start transition-colors text-on-surface">
+  <!-- Sidebar -->
+  {{template "components/sidebar.html" .}}
+
+  <!-- Main content area -->
+  <div class="min-h-screen w-full lg:ml-64 ml-1/12">
+    <!-- Alerts and Actions Component -->
+    {{template "components/alertsAndActions.html" .}}
+
+    <header
+      class="lg:hidden bg-container border-b border-container h-1/12 flex items-center justify-start px-4 space-x-1 sticky top-0 z-30"
+    >
+
+      <!-- Mobile Open Button -->
+      <button
+        x-data
+        @click="$store.sidebarState.setOpen(true)"
+        class="lg:hidden text-muted-on-container hover:text-on-container"
+      >
+        <span
+          x-data
+          x-html="icon('menu', 'h-6 w-6 stroke-muted-on-container hover:stroke-on-container', '0 0 24 24')"
+        ></span>
+      </button>
+
+      <!-- Title -->
+      <div class="flex items-center justify-around space-x-2">
+        <img
+          src="/logo.png"
+          alt="Logo"
+          class="size-8 rounded-md shadow-md"
+        >
+        <span class="text-lg font-semibold text-on-container">{{.AppName}}</span>
+        <h1 class="text-xl font-semibold text-on-container">{{.Title}}</h1>
+      </div>
+    </header>
+
+    <!-- Form for updating avatar -->
+    <div class="w-full h-full flex justify-center items-center bg-transparent">
+      <div
+        class="m-4 w-full flex flex-col gap-4 max-w-11/12 rounded-2xl p-4 bg-container/90 backdrop-blur-sm shadow-lg border border-separator-on-container"
+        x-data
+        :class="{'h-11/12': $store.imageEditor.isLoaded, 'h-auto': !$store.imageEditor.isLoaded}"
+      >
+        <h2 class="text-lg font-semibold text-on-container">Update Avatar</h2>
+        <p class="text-sm text-muted-on-container">Choose a new profile picture to update your avatar.</p>
+        <input
+          id="avatarInput"
+          type="file"
+          name="avatar"
+          x-data
+          :accept="imageTypes"
+          @change="handleSelectImage(event)"
+          class="mt-4 block w-full text-sm text-on-container file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-on-accent hover:file:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent border-transparent"
+          required
+        />
+        <!-- input field for csrf -->
+        <input
+          id="csrfToken"
+          type="hidden"
+          name="{{.CSRFTokenName}}"
+          value="{{.CSRFTokenValue}}"
+        >
+
+        <!-- container for filerobot image editor -->
+        <div
+          id="imageEditorContainer"
+          class="w-full h-full"
+        ></div>
+
+        <div class="flex justify-end">
+          <button
+            type="button"
+            x-data
+            @click.prevent="handleSave()"
+            class="inline-flex items-center justify-center px-4 py-2 text-sm font-semibold text-on-accent bg-accent border border-transparent rounded-md shadow-sm hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent disabled:bg-neutral disabled:text-white"
+          >
+            Update Avatar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+{{end}}
+{{end}}

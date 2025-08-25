@@ -1,15 +1,30 @@
 {{define "components/commonHead.html"}}
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+>
 <title>{{ .Title }} - {{ .AppName }}</title>
 
 <!-- Alpine.js -->
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script
+  defer
+  src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+></script>
 
 <!-- favicon.png -->
-<link rel="icon" type="image/x-icon" href="/favicon.png">
+<link
+  rel="icon"
+  type="image/x-icon"
+  href="/favicon.png"
+>
 
-<script src="/darkMode.js"></script>
+<script src="/index.js"></script>
 
-<link rel="stylesheet" href="/index.css">
+<link
+  rel="stylesheet"
+  href="/index.css"
+>
+
+{{template "components/icons.js"}}
 {{end}}

@@ -25,7 +25,7 @@ var Querier *db.Queries
 // InitDB initializes the database connection pool.
 //
 // It should be called at the start of the application to set up the database connection pool.
-func InitDB() (err error) {
+func InitDB(ctx context.Context) (err error) {
 	pgConfig, err := pgxpool.ParseConfig(config.Stores.PostgreSQL.DSN)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func InitDB() (err error) {
 	// Add Tracer
 	pgConfig.ConnConfig.Tracer = otelpgx.NewTracer(options...)
 
-	PgPool, err = pgxpool.NewWithConfig(context.Background(), pgConfig)
+	PgPool, err = pgxpool.NewWithConfig(ctx, pgConfig)
 	if err != nil {
 		return err
 	}

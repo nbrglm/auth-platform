@@ -46,6 +46,12 @@ func RegisterAPIRoutes(engine *gin.Engine) {
 	loginWEBHandler := NewLoginWEBHandler()
 	loginWEBHandler.Register(engine)
 
+	profileWEBHandler := NewRootHandlerWEB()
+	profileWEBHandler.Register(engine)
+
+	updateAvatarHandler := NewUpdateAvatarHandlerWEB()
+	updateAvatarHandler.Register(engine)
+
 	unsafeRedirectHandler := NewUnsafeRedirectHandler()
 	unsafeRedirectHandler.Register(engine)
 }

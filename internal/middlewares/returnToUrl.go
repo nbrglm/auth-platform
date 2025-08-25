@@ -7,6 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/nbrglm/auth-platform/config"
+	"github.com/nbrglm/auth-platform/internal/logging"
+	"go.uber.org/zap"
 )
 
 const ReturnToURLKey = "returnTo"
@@ -30,6 +32,19 @@ func ReturnToURLMiddleware() gin.HandlerFunc {
 		u, err := url.Parse(returnTo)
 		if err != nil {
 			// Skip if the URL is invalid
+			c.Next()
+			return
+		}
+
+		if !u.IsAbs() {
+			path := strings.TrimSpace(u.Path)
+			if strings.HasPrefix(path, "/") {
+				// relative path case (safe, since it stays on same host)
+				c.Set(ReturnToURLKey, path)
+				c.Set(ReturnToURLUnsafeKey, false)
+				logging.Logger.Debug("relative returnTo URL detected", zap.String("returnTo", path))
+			}
+			// if not a valid relative path, skip
 			c.Next()
 			return
 		}

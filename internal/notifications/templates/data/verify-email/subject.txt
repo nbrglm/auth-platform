@@ -1,0 +1,3 @@
+{{define "VerifyEmailSubject"}}
+Welcome to {{.AppName}}! Please verify your email address
+{{end}}

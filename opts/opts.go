@@ -11,7 +11,7 @@ const DefaultOrgName = "Default Organization"
 const DefaultOrgId = "019735ab-f216-717f-9d12-e3915453c8d0"
 
 // S3 Store Bucket Names
-const S3StoreBucketName = "nbrglm-auth-platform"
+const S3StoreBucketName string = "nbrglm-auth-platform"
 
 // Used for configuring everything, from metrics to logging.
 // This file contains the version information for the application.

@@ -46,8 +46,8 @@ func (h *LogoutHandler) Register(engine *gin.Engine) {
 	metrics.Collectors = append(metrics.Collectors, h.LogoutWEBCounter)
 	metrics.Collectors = append(metrics.Collectors, h.LogoutAPICounter)
 
-	engine.GET("/auth/s/logout", h.HandleLogoutWEB)
-	engine.POST("/api/auth/s/logout", h.HandleLogoutAPI)
+	engine.GET("/auth/s/logout", middlewares.RateLimitUIAuthenticatedMiddleware(), h.HandleLogoutWEB)
+	engine.POST("/api/auth/s/logout", middlewares.RateLimitAPIMiddleware(), h.HandleLogoutAPI)
 }
 
 func (h *LogoutHandler) HandleLogoutWEB(c *gin.Context) {

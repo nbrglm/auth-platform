@@ -42,7 +42,7 @@ tasks:
   go-watch:
     desc: Run the Go code in watch mode
     cmds:
-      - CompileDaemon -exclude-dir .git -exclude-dir run-logs -exclude-dir public -exclude-dir run -exclude-dir data -include config.nbrglm.yaml -include *.html -include *.css -build "go build -o build/debug/backend" -command "./build/debug/backend serve --config config.nbrglm.yaml"
+      - CompileDaemon -exclude-dir .git -exclude-dir run-logs -exclude-dir public -exclude-dir run -exclude-dir .data -include config.nbrglm.yaml -include *.html -include *.css -build "go build -o build/debug/backend" -command "./build/debug/backend serve --config config.nbrglm.yaml"
 
   tw-watch:
     desc: Run the Tailwind CSS CLI in watch mode

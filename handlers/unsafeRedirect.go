@@ -49,7 +49,7 @@ func (h *UnsafeRedirectHandler) HandleUnsafeRedirectGET(c *gin.Context) {
 		redirectURL = &v
 	}
 
-	c.HTML(http.StatusOK, "unsafe_redirect.html", UnsafeRedirectPageParams{
+	c.HTML(http.StatusOK, "unsafeRedirect.html", UnsafeRedirectPageParams{
 		CommonPageParams: models.NewCommonPageParams("Unsafe Redirection", csrf.Token(c.Request)),
 		RedirectURL:      redirectURL,
 	})

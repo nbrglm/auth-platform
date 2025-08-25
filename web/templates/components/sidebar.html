@@ -1,0 +1,80 @@
+<!-- Sidebar Data, make it as fields and not an object, separate by commas -->
+{{define "sidebarIconsData"}}
+icons: {
+logout: "M16 17l4-4m0 0l-4-4m4 4H3m13 0a2 2 0 11-4 0 2 2 0 014 0zm-6-7a2 2 0 11-4 0 2 2 0 014 0z",
+settings: "M12 8.59l4.29 4.29c.63.63.18 1.71-.71 1.71H8.42c-.89 0-1.34-1.08-.71-1.71L12 8.59zm0-2.83L7.41 12 12 16.59
+16.59 12 12 5.76z"
+}
+{{end}}
+
+{{define "components/sidebar.html"}}
+<div
+  class="contents"
+  x-data="{isCurrent: (path) => path === window.location.pathname, items: [{title: 'Profile', icon: 'user', href: '/'}, {title: 'Security', icon: 'shield', href: '/security'}, {title: 'Devices', icon: 'device', href: '/devices'}, {title: 'Activity', icon: 'clock', href: '/activity'}]}"
+>
+  <!-- Mobile sidebar backdrop -->
+  <div
+    x-show="$store.sidebarState.isOpen"
+    x-cloak
+    x-data
+    class="fixed inset-0 z-40 bg-black opacity-50"
+    @click="$store.sidebarState.setOpen(false)"
+  ></div>
+
+  <!-- Sidebar -->
+  <aside
+    class="fixed inset-y-0 left-0 z-50 w-64 bg-container transform transition-transform duration-300 ease-in-out lg:translate-x-0"
+    :class="{'-translate-x-full': !$store.sidebarState.isOpen, 'translate-x-0': $store.sidebarState.isOpen}"
+  >
+    <div class="flex items-center justify-between h-1/12 px-4 lg:mt-0 mt-2 border-b border-container">
+      <div class="flex items-center">
+        <img
+          src="/logo.png"
+          alt="Logo"
+          class="size-8 rounded-md shadow-md"
+        >
+        <span class="ml-2 text-lg font-semibold text-on-container">{{.AppName}}</span>
+      </div>
+
+      <button
+        x-data
+        @click="$store.sidebarState.setOpen(false)"
+        class="lg:hidden text-muted-on-container hover:text-on-container"
+      >
+        <span
+          x-data
+          x-html="icon('close', 'h-6 w-6 stroke-current', '0 0 24 24')"
+        ></span>
+      </button>
+    </div>
+
+    <div class="flex flex-col justify-between items-start w-full h-full">
+      <!-- Navigation -->
+      <nav class="mt-4 px-4 w-full">
+        <ul class="space-y-2">
+          <template x-for="item in items">
+            <li>
+              <a
+                :href="item.href"
+                class="flex items-center px-4 py-2 text-on-container rounded-lg transition-colors"
+                :class="{'text-on-accent': isCurrent(item.href), 'text-on-container': !isCurrent(item.href), 'bg-accent': isCurrent(item.href), 'hover:bg-accent-hover': isCurrent(item.href), 'hover:bg-hover-container': !isCurrent(item.href)}"
+              >
+                <span
+                  x-data
+                  x-html="icon(item.icon, 'h-5 w-5 mr-3 ' + (isCurrent(item.href) ? 'stroke-on-accent' : 'stroke-on-container'), '0 0 24 24')"
+                ></span>
+                <span x-text="item.title"></span>
+              </a>
+            </li>
+          </template>
+        </ul>
+      </nav>
+
+    </div>
+    <!-- Footer for Branding -->
+    <div class="absolute bottom-1 left-4">
+      {{template "components/nbrglmBranding.html" .}}
+    </div>
+  </aside>
+</div>
+{{end}}
