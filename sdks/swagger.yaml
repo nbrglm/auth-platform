@@ -1,0 +1,464 @@
+basePath: /
+definitions:
+  handlers.LogoutResult:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  handlers.RefreshTokenResult:
+    properties:
+      tokens:
+        $ref: '#/definitions/tokens.Tokens'
+    type: object
+  handlers.SendVerificationEmailData:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  handlers.SendVerificationEmailResult:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  handlers.UserFlowData:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      expiresAt:
+        type: string
+      id:
+        type: string
+      inviteToken:
+        description: For Invite Flow
+        type: string
+      mfaRequired:
+        type: boolean
+      mfaVerified:
+        type: boolean
+      orgs:
+        items:
+          $ref: '#/definitions/models.OrgCompat'
+        type: array
+      returnTo:
+        description: URL to redirect after flow completion
+        type: string
+      ssoProvider:
+        description: For SSO Flow, e.g., "google", "github", etc.
+        type: string
+      ssoUserId:
+        description: For SSO Flow, External User ID
+        type: string
+      type:
+        type: string
+      userId:
+        type: string
+    type: object
+  handlers.UserLoginData:
+    properties:
+      email:
+        type: string
+      flowReturnTo:
+        description: |-
+          Optional field to store in the flow data which can be fetched by the client after login
+          This can be used to redirect the user to a specific page after login
+          or to maintain the state of the application.
+          It is recommended to validate this field on the client side to prevent open redirect vulnerabilities.
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handlers.UserLoginResult:
+    properties:
+      flowId:
+        type: string
+      message:
+        type: string
+      requireEmailVerification:
+        type: boolean
+      tokens:
+        $ref: '#/definitions/tokens.Tokens'
+    type: object
+  handlers.UserSignupData:
+    properties:
+      confirmPassword:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      inviteToken:
+        description: Optional invite token for signup
+        type: string
+      lastName:
+        type: string
+      password:
+        maxLength: 32
+        minLength: 8
+        type: string
+    required:
+    - confirmPassword
+    - email
+    - firstName
+    - lastName
+    - password
+    type: object
+  handlers.UserSignupResult:
+    properties:
+      message:
+        type: string
+      userId:
+        type: string
+    type: object
+  handlers.VerifyEmailTokenData:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
+  handlers.VerifyEmailTokenResult:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  models.ErrorResponse:
+    properties:
+      code:
+        description: Code is an error code that can be used for programmatic handling
+          of errors.
+        type: integer
+      debug:
+        description: DebugMessage is a technical message that can be used for debugging.
+        type: string
+      message:
+        description: Message is a user-friendly message that can be displayed to the
+          end user.
+        type: string
+    type: object
+  models.OrgCompat:
+    properties:
+      avatarURL:
+        type: string
+      createdAt:
+        type: string
+      deletedAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      settings:
+        additionalProperties: {}
+        type: object
+      slug:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  tokens.Tokens:
+    properties:
+      refresh_token:
+        description: |-
+          RefreshToken is the generated refresh token.
+
+          This is base64.RawURLEncoding encoded.
+          DO NOT DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.
+        type: string
+      refresh_token_expiry:
+        description: RefreshTokenExpiry is the expiration time of the refresh token.
+        type: string
+      session_id:
+        description: SessionId is the unique identifier for the session.
+        type: string
+      session_token:
+        description: |-
+          SessionToken is the generated session token.
+
+          This is a jwt which is base64.RawURLEncoding encoded.
+          YOU NEED TO DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.
+          DO NOT USE IT AS IS. VALIDATION WILL FAIL WITHOUT DECODING.
+          ONLY WHEN DECODED, YOU SHOULD PASS IT TO THE THINGS THAT REQUIRE THE SESSION TOKEN.
+        type: string
+      session_token_expiry:
+        description: SessionTokenExpiry is the expiration time of the session token.
+        type: string
+    type: object
+externalDocs:
+  description: NBRGLM Auth Platform Documentation
+  url: https://nbrglm.com/auth-platform/docs
+host: localhost:3360
+info:
+  contact:
+    email: contact@nbrglm.com
+    name: NBRGLM Support
+    url: https://nbrglm.com/support
+  description: This is the NBRGLM Auth Platform API documentation.
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://nbrglm.com/auth-platform/terms
+  title: NBRGLM Auth Platform
+  version: 0.0.1
+paths:
+  /api/auth/flow/{flowId}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves user flow data based on the provided flow ID.
+      parameters:
+      - description: Flow ID
+        in: path
+        name: flowId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User Flow Data
+          schema:
+            $ref: '#/definitions/handlers.UserFlowData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get User Flow Data
+      tags:
+      - Auth
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Handles user login requests.
+      parameters:
+      - description: User Login Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UserLoginData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User Login Result
+          schema:
+            $ref: '#/definitions/handlers.UserLoginResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden - Email Not Verified OR User does not belong to any
+            organization
+          schema:
+            $ref: '#/definitions/handlers.UserLoginResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: User Login
+      tags:
+      - Auth
+  /api/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logs out the user by revoking their session using session token
+        or refresh token. Requires atleast one of the tokens.
+      parameters:
+      - description: Session token
+        in: header
+        name: X-NAP-Session-Token
+        type: string
+      - description: Refresh token
+        in: header
+        name: X-NAP-Refresh-Token
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout result
+          schema:
+            $ref: '#/definitions/handlers.LogoutResult'
+        "400":
+          description: Bad Request - Invalid or missing tokens
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or expired tokens
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Logout user
+      tags:
+      - Auth
+  /api/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Handles token refresh requests.
+      parameters:
+      - description: Refresh token
+        in: header
+        name: X-NAP-Refresh-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New tokens
+          schema:
+            $ref: '#/definitions/handlers.RefreshTokenResult'
+        "400":
+          description: Bad Request - Invalid or missing tokens
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid or expired tokens - Proceed to Login
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Refresh Token
+      tags:
+      - Auth
+  /api/auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Handles user registration requests.
+      parameters:
+      - description: User Signup Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.UserSignupData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User Signup Result
+          schema:
+            $ref: '#/definitions/handlers.UserSignupResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized - Invalid Invite Token or Missing Invite Token
+            or Domain Not Allowed
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: User Signup
+      tags:
+      - Auth
+  /api/auth/verify-email/send:
+    post:
+      consumes:
+      - application/json
+      description: Sends a verification email to the user.
+      parameters:
+      - description: Send Verification Email Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.SendVerificationEmailData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Send Verification Email Result
+          schema:
+            $ref: '#/definitions/handlers.SendVerificationEmailResult'
+        "400":
+          description: Bad Request - Invalid Input or User does not exist
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Send Verification Email
+      tags:
+      - Auth
+  /api/auth/verify-email/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the email using the provided token.
+      parameters:
+      - description: Verify Email Token Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.VerifyEmailTokenData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verify Email Token Result
+          schema:
+            $ref: '#/definitions/handlers.VerifyEmailTokenResult'
+        "400":
+          description: Bad Request - Invalid Input or Token
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Verify Email Token
+      tags:
+      - Auth
+securityDefinitions:
+  APIKeyAuth:
+    in: header
+    name: X-NAP-API-Key
+    type: apiKey
+  RefreshHeaderAuth:
+    in: header
+    name: X-NAP-Refresh-Token
+    type: apiKey
+  SessionHeaderAuth:
+    in: header
+    name: X-NAP-Session-Token
+    type: apiKey
+swagger: "2.0"

@@ -1,0 +1,4 @@
+npmName: '@nbrglm-devs/auth-platform-node-sdk'
+npmVersion: 0.0.1
+licenseName: Apache-2.0
+disallowAdditionalPropertiesIfNotPresent: false
