@@ -67,7 +67,7 @@ jobs:
       - name: Create Generator Config NodeJS
         run: |
           touch $SDKS_DIR/openapi-generator-config.node.yaml
-          echo "npmName: @nbrglm-devs/auth-platform-node-sdk" >> $SDKS_DIR/openapi-generator-config.node.yaml
+          echo "npmName: '@nbrglm-devs/auth-platform-node-sdk'" >> $SDKS_DIR/openapi-generator-config.node.yaml
           echo "npmVersion: ${VERSION#v}" >> $SDKS_DIR/openapi-generator-config.node.yaml
           echo "licenseName: Apache-2.0" >> $SDKS_DIR/openapi-generator-config.node.yaml
           echo "disallowAdditionalPropertiesIfNotPresent: false" >> $SDKS_DIR/openapi-generator-config.node.yaml
