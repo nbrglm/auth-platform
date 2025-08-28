@@ -60,7 +60,7 @@ jobs:
 
       - name: Commit and Push Go SDK
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         working-directory: ./${{env.GO_SDK_REPO_DIR}}
         run: |
           gh auth setup-git
@@ -100,7 +100,7 @@ jobs:
 
       - name: Commit and Push Node SDK
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         working-directory: ./${{env.NODE_SDK_REPO_DIR}}
         run: |
           gh auth setup-git
@@ -140,7 +140,7 @@ jobs:
 
       - name: Commit and Push Python SDK
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         working-directory: ./${{env.PYTHON_SDK_REPO_DIR}}
         run: |
           gh auth setup-git
@@ -171,7 +171,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24.4'
+          go-version: '1.25.0'
       
       - name: Generate OpenAPI Spec
         run: |
@@ -218,7 +218,7 @@ jobs:
       
       - name: Push to Spec Repo
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         working-directory: ./${{env.SPEC_REPO_DIR}}
         run: |
           gh auth setup-git
