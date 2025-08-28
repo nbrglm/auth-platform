@@ -14,7 +14,6 @@ env:
   NODE_GEN_SDK_DIR: ./typescript-node-client
   PYTHON_GEN_SDK_DIR: ./python-client
 
-
 jobs:
   generate-and-push-sdks:
     runs-on: ubuntu-latest
@@ -35,14 +34,15 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Clean up old SDKs
-        run: rm -rf $SDKS_DIR && mkdir -p $GO_CLIENT_DIR $NODE_CLIENT_DIR $PYTHON_CLIENT_DIR
+        run: rm -rf $SDKS_DIR
       
       - name: Generate OpenAPI Spec
         run: |
           go install github.com/swaggo/swag/cmd/swag@v1.16.4
           swag init -o $SDKS_DIR
           cp $SDKS_DIR/swagger.yaml swagger.yaml
-          rm -rf $SDKS_DIR
+          rm -rf $SDKS_DIR/*
+          mkdir -p $SDKS_DIR $GO_CLIENT_DIR $NODE_CLIENT_DIR $PYTHON_CLIENT_DIR
           mv swagger.yaml $SPEC_FILE
 
       - name: Create Generator Config Golang
