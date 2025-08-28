@@ -1,0 +1,238 @@
+name: Release SDKs
+
+on:
+  push:
+    tags:
+      - 'v*'
+env:
+  SPEC_REPO: nbrglm/auth-platform-openapi-spec
+  SPEC_REPO_DIR: .repos/spec-repo
+  SPEC_DIR: .gen/oapispec
+  GO_SDK_REPO: nbrglm/auth-platform-go-sdk
+  GO_SDK_REPO_DIR: .repos/go-sdk-repo
+  GO_SDK_DIR: ./go-client
+  NODE_SDK_REPO: nbrglm/auth-platform-node-sdk
+  NODE_SDK_REPO_DIR: .repos/node-sdk-repo
+  NODE_SDK_DIR: ./typescript-node-client
+  PYTHON_SDK_REPO: nbrglm/auth-platform-py-sdk
+  PYTHON_SDK_REPO_DIR: .repos/py-sdk-repo
+  PYTHON_SDK_DIR: ./python-client
+
+jobs:
+  generate-and-push-sdks:
+    needs: 
+      - generate-and-publish-oapi-spec
+    runs-on: ubuntu-latest
+    permissions: 
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.SPEC_REPO}}
+
+      - name: Get Version tags
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Create SDK Directories
+        run: |
+          mkdir -p $GO_SDK_DIR $NODE_SDK_DIR $PYTHON_SDK_DIR
+      
+      # Generate and Push Go SDK
+      - name: Checkout Go SDK Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.GO_SDK_REPO}}
+          path: ${{env.GO_SDK_REPO_DIR}}
+
+      - name: Generate Go Client Library w/ the OpenAPITools Generator
+        uses: openapi-generators/openapitools-generator-action@v1.5.0
+        with:
+          generator: go
+          config-file: .openapi-generator-go-config.yaml
+          openapi-file: swagger.yaml
+
+      - name: Copy Go SDK
+        run: |
+          rm -rf $GO_SDK_REPO_DIR/*
+          cp -r $GO_SDK_DIR/* $GO_SDK_REPO_DIR/
+
+      - name: Commit and Push Go SDK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ./${{env.GO_SDK_REPO_DIR}}
+        run: |
+          gh auth setup-git
+          gh auth status
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update Go SDK to $VERSION" || (echo "No changes to commit" && exit 1)
+          # Create tag only if it doesn't exist remotely
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+            echo "Tag $VERSION already exists on remote"
+            exit 1
+          fi
+          echo "Tag $VERSION does not exist. Proceeding to create and push the tag."
+          git tag $VERSION || (echo "Tag $VERSION already exists" && exit 1)
+          git push origin main
+          git push origin $VERSION
+      
+      # Generate and Push Node SDK
+      - name: Checkout Node SDK Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.NODE_SDK_REPO}}
+          path: ${{env.NODE_SDK_REPO_DIR}}
+
+      - name: Generate Node Client Library w/ the OpenAPITools Generator
+        uses: openapi-generators/openapitools-generator-action@v1.5.0
+        with:
+          generator: typescript-node
+          config-file: .openapi-generator-node-config.yaml
+          openapi-file: swagger.yaml
+
+      - name: Copy Node SDK
+        run: |
+          rm -rf $NODE_SDK_REPO_DIR/*
+          cp -r $NODE_SDK_DIR/* $NODE_SDK_REPO_DIR/
+
+      - name: Commit and Push Node SDK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ./${{env.NODE_SDK_REPO_DIR}}
+        run: |
+          gh auth setup-git
+          gh auth status
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update Node SDK to $VERSION" || (echo "No changes to commit" && exit 1)
+          # Create tag only if it doesn't exist remotely
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+            echo "Tag $VERSION already exists on remote"
+            exit 1
+          fi
+          echo "Tag $VERSION does not exist. Proceeding to create and push the tag."
+          git tag $VERSION || (echo "Tag $VERSION already exists" && exit 1)
+          git push origin main
+          git push origin $VERSION
+
+      # Generate and Push Python SDK
+      - name: Checkout Python SDK Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.PYTHON_SDK_REPO}}
+          path: ${{env.PYTHON_SDK_REPO_DIR}}
+
+      - name: Generate Python Client Library w/ the OpenAPITools Generator
+        uses: openapi-generators/openapitools-generator-action@v1.5.0
+        with:
+          generator: python
+          config-file: .openapi-generator-python-config.yaml
+          openapi-file: swagger.yaml
+
+      - name: Copy Python SDK
+        run: |
+          rm -rf $PYTHON_SDK_REPO_DIR/*
+          cp -r $PYTHON_SDK_DIR/* $PYTHON_SDK_REPO_DIR/
+
+      - name: Commit and Push Python SDK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ./${{env.PYTHON_SDK_REPO_DIR}}
+        run: |
+          gh auth setup-git
+          gh auth status
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update Python SDK to $VERSION" || (echo "No changes to commit" && exit 1)
+          # Create tag only if it doesn't exist remotely
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+            echo "Tag $VERSION already exists on remote"
+            exit 1
+          fi
+          echo "Tag $VERSION does not exist. Proceeding to create and push the tag."
+          git tag $VERSION || (echo "Tag $VERSION already exists" && exit 1)
+          git push origin main
+          git push origin $VERSION
+
+  generate-and-publish-oapi-spec:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24.4'
+      
+      - name: Generate OpenAPI Spec
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.4
+          swag init -o $SPEC_DIR
+
+      - name: Get Version tags
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Clone Spec Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{env.SPEC_REPO}}
+          path: ${{env.SPEC_REPO_DIR}}
+
+      - name: Create Generator Config Golang
+        run: |
+          touch $SPEC_DIR/.openapi-generator-go-config.yaml
+          echo "packageName: auth_platform_go_sdk" >> $SPEC_DIR/.openapi-generator-go-config.yaml
+          echo "packageVersion: ${VERSION#v}" >> $SPEC_DIR/.openapi-generator-go-config.yaml
+          echo "disallowAdditionalPropertiesIfNotPresent: false" >> $SPEC_DIR/.openapi-generator-go-config.yaml
+
+      - name: Create Generator Config NodeJS
+        run: |
+          touch $SPEC_DIR/.openapi-generator-node-config.yaml
+          echo "npmName: @nbrglm-devs/auth-platform-node-sdk" >> $SPEC_DIR/.openapi-generator-node-config.yaml
+          echo "npmVersion: ${VERSION#v}" >> $SPEC_DIR/.openapi-generator-node-config.yaml
+          echo "licenseName: Apache-2.0" >> $SPEC_DIR/.openapi-generator-node-config.yaml
+          echo "disallowAdditionalPropertiesIfNotPresent: false" >> $SPEC_DIR/.openapi-generator-node-config.yaml
+
+      - name: Create Generator Config Python
+        run: |
+          touch $SPEC_DIR/.openapi-generator-python-config.yaml
+          echo "packageName: auth_platform_py_sdk" >> $SPEC_DIR/.openapi-generator-python-config.yaml
+          echo "projectName: auth-platform-py-sdk" >> $SPEC_DIR/.openapi-generator-python-config.yaml
+          echo "packageUrl: https://github.com/nbrglm/auth-platform-py-sdk" >> $SPEC_DIR/.openapi-generator-python-config.yaml
+          echo "packageVersion: ${VERSION#v}" >> $SPEC_DIR/.openapi-generator-python-config.yaml
+
+      - name: Copy OpenAPI Spec and Generator Files
+        run: |
+          rm -rf $SPEC_REPO_DIR/*
+          cp -r $SPEC_DIR/* $SPEC_REPO_DIR/
+      
+      - name: Push to Spec Repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ./${{env.SPEC_REPO_DIR}}
+        run: |
+          gh auth setup-git
+          gh auth status
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update OpenAPI Spec to $VERSION" || (echo "No changes to commit" && exit 1)
+          # Create tag only if it doesn't exist remotely
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+            echo "Tag $VERSION already exists on remote"
+            exit 1
+          fi
+          echo "Tag $VERSION does not exist. Proceeding to create and push the tag."
+          git tag $VERSION || (echo "Tag $VERSION already exists" && exit 1)
+          git push origin main
+          git push origin $VERSION

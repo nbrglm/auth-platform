@@ -5,7 +5,7 @@ import (
 )
 
 // @title NBRGLM Auth Platform
-// @version 0.1.0
+// @version 0.0.1
 // @description This is the NBRGLM Auth Platform API documentation.
 // @termsOfService https://nbrglm.com/auth-platform/terms
 
