@@ -12,9 +12,7 @@ admins:
 # When enabled, it allows the auth platform to handle multiple tenants.
 # Each tenant can have its own configuration, users, and settings.
 # Note: This feature is experimental and may not be fully stable.
-multitenancy:
-  # Enable or disable multitenancy.
-  enabled: false
+multitenancy: false
 
 # Configure notifications for the auth platform.
 # Currently, only email notifications are supported.
@@ -169,19 +167,8 @@ security:
 
   # Configuration for Rate Limiting.
   rateLimit:
-    # Configure the rate limiting for UI endpoints.
-    ui:
-      # The maximum number of requests allowed to open (unauthenticated) endpoints like login, signup, verify-email, etc.
-      # Format: "R-U", where R is number of requests and U is unit (s - per second, m - per minute, h - per hour, d - per day).
-      openEndpointsRate: 10-m
-
-      # The maximum number of requests allowed to authenticated endpoints.
-      # Format: "R-U", where R is number of requests and U is unit (s - per second, m - per minute, h - per hour, d - per day).
-      authenticatedEndpointsRate: 60-m
-
     # Configure the rate limiting for API endpoints.
-    api:
-      rate: 120-s
+    rate: 120-s
 
   # CORS settings for the auth platform.
   cors:

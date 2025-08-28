@@ -10,9 +10,7 @@ import (
 )
 
 var (
-	apiEndpointRateLimiter             *limiter.Limiter
-	uiOpenEndpointRateLimiter          *limiter.Limiter
-	uiAuthenticatedEndpointRateLimiter *limiter.Limiter
+	rateLimiter *limiter.Limiter
 )
 
 // InitRateLimitStore initializes the rate limit store.
@@ -28,76 +26,28 @@ func InitRateLimitStore() error {
 		DB:       config.Stores.Redis.DB,
 	}
 	redisClient := redis.NewClient(&redisOpts)
-	apiStore, err := sredis.NewStoreWithOptions(
+	rateLimitStore, err := sredis.NewStoreWithOptions(
 		redisClient,
 		limiter.StoreOptions{
-			Prefix: "nbrglm_auth_platform_rate_limit_api",
+			Prefix: "nbrglm_auth_platform_rate_limit",
 		},
 	)
 	if err != nil {
 		return err
 	}
 
-	uiAuthenticatedStore, err := sredis.NewStoreWithOptions(
-		redisClient,
-		limiter.StoreOptions{
-			Prefix: "nbrglm_auth_platform_rate_limit_ui_authenticated",
-		},
-	)
+	rate, err := limiter.NewRateFromFormatted(config.Security.RateLimit.Rate)
 	if err != nil {
 		return err
 	}
 
-	uiOpenStore, err := sredis.NewStoreWithOptions(
-		redisClient,
-		limiter.StoreOptions{
-			Prefix: "nbrglm_auth_platform_rate_limit_ui_open",
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	// API Endpoints
-	apiRate, err := limiter.NewRateFromFormatted(config.Security.RateLimit.API.Rate)
-	if err != nil {
-		return err
-	}
-	apiEndpointRateLimiter = limiter.New(apiStore, apiRate)
-
-	// Open UI Endpoints
-	uiOpenRate, err := limiter.NewRateFromFormatted(config.Security.RateLimit.UI.OpenEndpointsRate)
-	if err != nil {
-		return err
-	}
-	uiOpenEndpointRateLimiter = limiter.New(uiOpenStore, uiOpenRate)
-
-	// Authenticated UI Endpoints
-	uiAuthenticatedRate, err := limiter.NewRateFromFormatted(config.Security.RateLimit.UI.AuthenticatedEndpointsRate)
-	if err != nil {
-		return err
-	}
-	uiAuthenticatedEndpointRateLimiter = limiter.New(uiAuthenticatedStore, uiAuthenticatedRate)
+	rateLimiter = limiter.New(rateLimitStore, rate)
 	return nil
 }
 
-// RateLimitAPIMiddleware returns a middleware that applies rate limiting
+// RateLimitMiddleware returns a middleware that applies rate limiting
 // to open API endpoints based on the configured rate limit.
 // This middleware is used for endpoints that do not require authentication.
-func RateLimitAPIMiddleware() gin.HandlerFunc {
-	return mgin.NewMiddleware(apiEndpointRateLimiter)
-}
-
-// RateLimitUIOpenMiddleware returns a middleware that applies rate limiting
-// to open UI endpoints based on the configured rate limit.
-// This middleware is used for endpoints that do not require authentication.
-func RateLimitUIOpenMiddleware() gin.HandlerFunc {
-	return mgin.NewMiddleware(uiOpenEndpointRateLimiter)
-}
-
-// RateLimitUIAuthenticatedMiddleware returns a middleware that applies rate limiting
-// to authenticated UI endpoints based on the configured rate limit.
-// This middleware is used for endpoints that require user authentication.
-func RateLimitUIAuthenticatedMiddleware() gin.HandlerFunc {
-	return mgin.NewMiddleware(uiAuthenticatedEndpointRateLimiter)
+func RateLimitMiddleware() gin.HandlerFunc {
+	return mgin.NewMiddleware(rateLimiter)
 }

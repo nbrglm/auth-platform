@@ -15,12 +15,12 @@
         },
         "version": "0.1.0"
     },
-    "host": "localhost:8080",
+    "host": "localhost:3360",
     "basePath": "/",
     "paths": {
-        "/api/auth/signup": {
-            "post": {
-                "description": "Handles user registration requests via API.",
+        "/api/auth/flow/{flowId}": {
+            "get": {
+                "description": "Retrieves user flow data based on the provided flow ID.",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,23 +30,21 @@
                 "tags": [
                     "Auth"
                 ],
-                "summary": "User Signup API",
+                "summary": "Get User Flow Data",
                 "parameters": [
                     {
-                        "description": "User Signup Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/auth.UserSignupData"
-                        }
+                        "type": "string",
+                        "description": "Flow ID",
+                        "name": "flowId",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "User Signup Result",
+                        "description": "User Flow Data",
                         "schema": {
-                            "$ref": "#/definitions/auth.UserSignupResult"
+                            "$ref": "#/definitions/handlers.UserFlowData"
                         }
                     },
                     "400": {
@@ -63,18 +61,457 @@
                     }
                 }
             }
+        },
+        "/api/auth/login": {
+            "post": {
+                "description": "Handles user login requests.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User Login",
+                "parameters": [
+                    {
+                        "description": "User Login Data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UserLoginData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User Login Result",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UserLoginResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Email Not Verified OR User does not belong to any organization",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UserLoginResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "description": "Logs out the user by revoking their session using session token or refresh token. Requires atleast one of the tokens.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session token",
+                        "name": "X-NAP-Session-Token",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Refresh token",
+                        "name": "X-NAP-Refresh-Token",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Logout result",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LogoutResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid or missing tokens",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or expired tokens",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/refresh": {
+            "post": {
+                "description": "Handles token refresh requests.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh Token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Refresh token",
+                        "name": "X-NAP-Refresh-Token",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "New tokens",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.RefreshTokenResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid or missing tokens",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid or expired tokens - Proceed to Login",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/signup": {
+            "post": {
+                "description": "Handles user registration requests.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User Signup",
+                "parameters": [
+                    {
+                        "description": "User Signup Data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UserSignupData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User Signup Result",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.UserSignupResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid Invite Token or Missing Invite Token or Domain Not Allowed",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/verify-email/send": {
+            "post": {
+                "description": "Sends a verification email to the user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Send Verification Email",
+                "parameters": [
+                    {
+                        "description": "Send Verification Email Data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SendVerificationEmailData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Send Verification Email Result",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.SendVerificationEmailResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid Input or User does not exist",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/verify-email/verify": {
+            "post": {
+                "description": "Verifies the email using the provided token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify Email Token",
+                "parameters": [
+                    {
+                        "description": "Verify Email Token Data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.VerifyEmailTokenData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verify Email Token Result",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.VerifyEmailTokenResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid Input or Token",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
-        "auth.UserSignupData": {
+        "handlers.LogoutResult": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "handlers.RefreshTokenResult": {
+            "type": "object",
+            "properties": {
+                "tokens": {
+                    "$ref": "#/definitions/tokens.Tokens"
+                }
+            }
+        },
+        "handlers.SendVerificationEmailData": {
             "type": "object",
             "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.SendVerificationEmailResult": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "handlers.UserFlowData": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expiresAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inviteToken": {
+                    "description": "For Invite Flow",
+                    "type": "string"
+                },
+                "mfaRequired": {
+                    "type": "boolean"
+                },
+                "mfaVerified": {
+                    "type": "boolean"
+                },
+                "orgs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.OrgCompat"
+                    }
+                },
+                "returnTo": {
+                    "description": "URL to redirect after flow completion",
+                    "type": "string"
+                },
+                "ssoProvider": {
+                    "description": "For SSO Flow, e.g., \"google\", \"github\", etc.",
+                    "type": "string"
+                },
+                "ssoUserId": {
+                    "description": "For SSO Flow, External User ID",
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.UserLoginData": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "flowReturnTo": {
+                    "description": "Optional field to store in the flow data which can be fetched by the client after login\nThis can be used to redirect the user to a specific page after login\nor to maintain the state of the application.\nIt is recommended to validate this field on the client side to prevent open redirect vulnerabilities.",
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.UserLoginResult": {
+            "type": "object",
+            "properties": {
+                "flowId": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "requireEmailVerification": {
+                    "type": "boolean"
+                },
+                "tokens": {
+                    "$ref": "#/definitions/tokens.Tokens"
+                }
+            }
+        },
+        "handlers.UserSignupData": {
+            "type": "object",
+            "required": [
+                "confirmPassword",
                 "email",
                 "firstName",
                 "lastName",
                 "password"
             ],
             "properties": {
+                "confirmPassword": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
@@ -90,11 +527,12 @@
                 },
                 "password": {
                     "type": "string",
+                    "maxLength": 32,
                     "minLength": 8
                 }
             }
         },
-        "auth.UserSignupResult": {
+        "handlers.UserSignupResult": {
             "type": "object",
             "properties": {
                 "message": {
@@ -102,6 +540,28 @@
                 },
                 "userId": {
                     "type": "string"
+                }
+            }
+        },
+        "handlers.VerifyEmailTokenData": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.VerifyEmailTokenResult": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -121,37 +581,80 @@
                     "type": "string"
                 }
             }
+        },
+        "models.OrgCompat": {
+            "type": "object",
+            "properties": {
+                "avatarURL": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "settings": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "tokens.Tokens": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "description": "RefreshToken is the generated refresh token.\n\nThis is base64.RawURLEncoding encoded.\nDO NOT DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.",
+                    "type": "string"
+                },
+                "refresh_token_expiry": {
+                    "description": "RefreshTokenExpiry is the expiration time of the refresh token.",
+                    "type": "string"
+                },
+                "session_id": {
+                    "description": "SessionId is the unique identifier for the session.",
+                    "type": "string"
+                },
+                "session_token": {
+                    "description": "SessionToken is the generated session token.\n\nThis is a jwt which is base64.RawURLEncoding encoded.\nYOU NEED TO DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.\nDO NOT USE IT AS IS. VALIDATION WILL FAIL WITHOUT DECODING.\nONLY WHEN DECODED, YOU SHOULD PASS IT TO THE THINGS THAT REQUIRE THE SESSION TOKEN.",
+                    "type": "string"
+                },
+                "session_token_expiry": {
+                    "description": "SessionTokenExpiry is the expiration time of the session token.",
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {
-        "CSRFTokenCookieAuth": {
+        "APIKeyAuth": {
             "type": "apiKey",
-            "name": "nap_csrf_tk",
-            "in": "cookie"
-        },
-        "CSRFTokenHeaderAuth": {
-            "type": "apiKey",
-            "name": "X-CSRF-Token",
+            "name": "X-NAP-API-Key",
             "in": "header"
-        },
-        "RefreshCookieAuth": {
-            "type": "apiKey",
-            "name": "nap_refresh_tk",
-            "in": "cookie"
         },
         "RefreshHeaderAuth": {
             "type": "apiKey",
             "name": "X-NAP-Refresh-Token",
             "in": "header"
         },
-        "SessionCookieAuth": {
-            "type": "apiKey",
-            "name": "nap_session_tk",
-            "in": "cookie"
-        },
         "SessionHeaderAuth": {
             "type": "apiKey",
-            "name": "Authorization",
+            "name": "X-NAP-Session-Token",
             "in": "header"
         }
     },

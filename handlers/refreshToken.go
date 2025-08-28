@@ -1,45 +1,35 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/nbrglm/auth-platform/db"
 	"github.com/nbrglm/auth-platform/internal"
-	"github.com/nbrglm/auth-platform/internal/auth"
 	"github.com/nbrglm/auth-platform/internal/metrics"
 	"github.com/nbrglm/auth-platform/internal/middlewares"
 	"github.com/nbrglm/auth-platform/internal/models"
+	"github.com/nbrglm/auth-platform/internal/store"
 	"github.com/nbrglm/auth-platform/internal/tokens"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.opentelemetry.io/otel/codes"
 	"go.uber.org/zap"
 )
 
 type RefreshTokenHandler struct {
-	// Track the number of refresh token requests made by the UI.
-	RefreshWEBCounter *prometheus.CounterVec
-
-	// Track the number of refresh token requests made by the API.
-	RefreshAPICounter *prometheus.CounterVec
+	RefreshTokenCounter *prometheus.CounterVec
 }
 
 func NewRefreshTokenHandler() *RefreshTokenHandler {
 	return &RefreshTokenHandler{
-		RefreshWEBCounter: prometheus.NewCounterVec(
+		RefreshTokenCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Namespace: "nbrglm_auth_platform",
 				Subsystem: "auth",
-				Name:      "user_refresh_web_requests",
-				Help:      "Total number of user refresh token requests from the web",
-			},
-			[]string{"status"},
-		),
-		RefreshAPICounter: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Namespace: "nbrglm_auth_platform",
-				Subsystem: "auth",
-				Name:      "user_refresh_api_requests",
-				Help:      "Total number of user refresh token requests from the API",
+				Name:      "user_refresh_token_requests",
+				Help:      "Total number of user refresh token requests",
 			},
 			[]string{"status"},
 		),
@@ -47,110 +37,135 @@ func NewRefreshTokenHandler() *RefreshTokenHandler {
 }
 
 func (h *RefreshTokenHandler) Register(engine *gin.Engine) {
-	metrics.Collectors = append(metrics.Collectors, h.RefreshAPICounter)
-	metrics.Collectors = append(metrics.Collectors, h.RefreshWEBCounter)
-
-	engine.POST("/api/auth/s/refresh", middlewares.RateLimitAPIMiddleware(), h.HandleRefreshTokenAPI)
-	engine.GET("/auth/s/refresh", middlewares.RateLimitUIAuthenticatedMiddleware(), h.HandleRefreshTokenWEB)
+	metrics.Collectors = append(metrics.Collectors, h.RefreshTokenCounter)
+	engine.POST("/api/auth/refresh", middlewares.RequireAuth(middlewares.AuthModeRefresh), h.HandleRefreshToken)
 }
 
-// HandleRefreshTokenAPI godoc
-// @Summary Refresh Token API
-// @Description Handles token refresh requests via API.
+type RefreshTokenResult struct {
+	Tokens *tokens.Tokens `json:"tokens"`
+}
+
+// HandleRefreshToken godoc
+// @Summary Refresh Token
+// @Description Handles token refresh requests.
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param data body auth.RefreshTokenData true "Refresh Token Data"
-// @Success 200 {object} auth.SessionRefreshResult "Refresh Token Result"
-// @Failure 400 {object} models.ErrorResponse "Bad Request"
-// @Failure 500 {object} models.ErrorResponse "Internal Server Error"
-// @Router /api/auth/s/refresh [post]
-func (h *RefreshTokenHandler) HandleRefreshTokenAPI(c *gin.Context) {
-	h.RefreshAPICounter.WithLabelValues("received").Inc()
+// @Param X-NAP-Refresh-Token header string true "Refresh token"
+// @Success 200 {object} RefreshTokenResult "New tokens"
+// @Failure 400 {object} models.ErrorResponse "Bad Request - Invalid or missing tokens"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized - Invalid or expired tokens - Proceed to Login"
+// @Failure 500 {object} models.ErrorResponse "Internal server error"
+// @Router /api/auth/refresh [post]
+func (h *RefreshTokenHandler) HandleRefreshToken(c *gin.Context) {
+	h.RefreshTokenCounter.WithLabelValues("received").Inc()
 
 	ctx, log, span := internal.WithContext(c.Request.Context(), "refresh_token_api")
 	defer span.End() // Ensure the span is ended to avoid memory leaks
 
-	var refreshData auth.RefreshTokenData
-	if err := c.ShouldBindJSON(&refreshData); err != nil {
-		h.RefreshAPICounter.WithLabelValues("invalid_input").Inc()
-		log.Debug("Invalid input data", zap.Error(err))
-		c.JSON(http.StatusBadRequest, models.NewErrorResponse("Invalid request data", "Please check your input and try again.", http.StatusBadRequest, nil).Filter())
+	refreshToken := c.GetString(middlewares.CtxRefreshToken)
+	// we don't check if refreshToken is empty because the RequireAuth middleware ensures it's present
+
+	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
+	defer tx.Rollback(ctx)
 
-	result, err := auth.HandleRefresh(ctx, log, refreshData)
-	result = ProcessAPIResult(c, result, err, span, log, h.RefreshAPICounter, "refresh_token_api")
-	if result == nil {
+	q := store.Querier.WithTx(tx)
+	log.Debug("Transaction begun successfully")
+
+	_, refreshTokenHash := tokens.HashTokens(&tokens.Tokens{
+		RefreshToken: refreshToken,
+	})
+	log.Debug("Refresh token hashed")
+
+	session, err := q.GetSessionByRefreshToken(ctx, refreshTokenHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			ProcessError(c, models.NewErrorResponse("Invalid refresh token! Please login again.", "No session found for refresh token", http.StatusUnauthorized, nil), span, log, h.RefreshTokenCounter, "refresh_token")
+			return
+		}
+
+		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve session", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
-	if result.ShouldLogin {
-		h.RefreshAPICounter.WithLabelValues("invalid_token").Inc()
-		// Only place where we break convention,
-		// since we cannot return a 401 Unauthorized here as the requester is an application's backend,
-		// we return a 200 with a flag indicating the user should login.
-		c.JSON(http.StatusOK, result)
-		return
-	}
+	log.Debug("Session retrieved successfully", zap.String("sessionID", session.ID.String()))
 
-	h.RefreshAPICounter.WithLabelValues("success").Inc()
-	span.SetStatus(codes.Ok, "Tokens refreshed successfully")
-	c.JSON(http.StatusOK, result.Tokens)
-}
+	// We DO NOT CHECK if the token has been revoked here as:
+	// The revocation is done by deleting the session from the database.
+	// So if the session exists, the token is valid and not revoked.
+	// Thus, if we are here, it means the session exists and the token is valid.
+	// Using the method `tokens.HasTokenBeenRevoked`, which checks if no session exists for the given session ID,
+	// would be redundant.
 
-func (h *RefreshTokenHandler) HandleRefreshTokenWEB(c *gin.Context) {
-	h.RefreshWEBCounter.WithLabelValues("received").Inc()
-
-	ctx, log, span := internal.WithContext(c.Request.Context(), "refresh_token_web")
-	defer span.End() // Ensure the span is ended to avoid memory leaks
-
-	log.Debug("Checking refresh status for user",
-		zap.Bool("refresh_needed", c.GetBool(middlewares.CtxSessionRefreshKey)),
-		zap.Bool("session_exists", c.GetBool(middlewares.CtxSessionExistsKey)))
-
-	if c.GetBool(middlewares.CtxSessionExistsKey) {
-		h.RefreshWEBCounter.WithLabelValues("no_refresh_needed").Inc()
-		u := middlewares.GetRedirectURLOriginalOrFallback(c)
-		c.Redirect(http.StatusSeeOther, u)
-		return
-	} else if !c.GetBool(middlewares.CtxSessionRefreshKey) {
-		h.RefreshWEBCounter.WithLabelValues("invalid_token").Inc()
-		u := middlewares.GetRedirectURLWithReturnTo(c, "/auth/login")
-		c.Redirect(http.StatusSeeOther, u)
-		return
-	}
-
-	refreshData := auth.RefreshTokenData{
-		RefreshToken: c.GetString(middlewares.CtxSessionRefreshTokenKey),
-	}
-
-	result, err := auth.HandleRefresh(ctx, log, refreshData)
-	log.Debug("Refresh tokens result", zap.Any("result", result), zap.Error(err))
+	newTokenInfo, err := q.GetInfoForSessionRefresh(ctx, db.GetInfoForSessionRefreshParams{
+		UserID: session.UserID,
+		OrgID:  session.OrgID,
+	})
 
 	if err != nil {
-		// To prevent an infinite loop, we REMOVE the refreshToken from the cookies
-		tokens.RemoveTokens(c, false, true)
-		// The actual processing of the error is done in ProcessUiResult,
-		// which will also set the appropriate HTTP status code and response body.
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Debug("No user or organization found for session", zap.String("sessionID", session.ID.String()))
+			ProcessError(c, models.NewErrorResponse("User or organization not found! Please login again.", "No user or organization found for session", http.StatusUnauthorized, nil), span, log, h.RefreshTokenCounter, "refresh_token")
+			return
+		}
+
+		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve user or organization info", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		return
+	}
+	log.Debug("User and organization info retrieved successfully", zap.String("userID", session.UserID.String()), zap.String("orgSlug", newTokenInfo.OrgSlug))
+
+	avatarUrl := ""
+	if newTokenInfo.UserAvatarUrl != nil {
+		avatarUrl = *newTokenInfo.UserAvatarUrl
 	}
 
-	// The WithUI's params other than the returnURL do not matter as we don't show an error...
-	result = ProcessUiResult(c, result, err.WithUI("", middlewares.GetRedirectURLWithReturnTo(c, "/auth/login"), ""), span, log, h.RefreshWEBCounter, "refresh_token_web")
-	if result == nil {
+	log.Debug("Generating new tokens for user", zap.String("orgSlug", newTokenInfo.OrgSlug))
+
+	newTokenPair, err := tokens.RefreshSessionTokens(session, tokens.AuthPlatformClaims{
+		OrgSlug: newTokenInfo.OrgSlug,
+		OrgName: newTokenInfo.OrgName,
+		OrgId:   session.OrgID.String(),
+
+		Email:         newTokenInfo.UserEmail,
+		EmailVerified: newTokenInfo.UserEmailVerified,
+		UserFname:     *newTokenInfo.UserFname,
+		UserLname:     *newTokenInfo.UserLname,
+		UserAvatarURL: avatarUrl,
+		UserOrgRole:   newTokenInfo.UserOrgRole,
+	})
+	if err != nil {
+		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to generate new tokens", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		return
+	}
+	log.Debug("New token pair generated successfully")
+
+	newSessionTokenHash, newRefreshTokenHash := tokens.HashTokens(newTokenPair)
+
+	_, err = q.RefreshSession(ctx, db.RefreshSessionParams{
+		ID:               session.ID,
+		RefreshTokenHash: &newRefreshTokenHash,
+		TokenHash:        &newSessionTokenHash,
+		ExpiresAt: pgtype.Timestamptz{
+			Time:  newTokenPair.RefreshTokenExpiry,
+			Valid: true,
+		},
+	})
+
+	if err != nil {
+		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to refresh session", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 
-	if result.ShouldLogin {
-		// To prevent an infinite loop, we REMOVE the refreshToken from the cookies
-		tokens.RemoveTokens(c, false, true)
-
-		h.RefreshWEBCounter.WithLabelValues("invalid_token").Inc()
-		c.Redirect(http.StatusSeeOther, middlewares.GetRedirectURLWithReturnTo(c, "/auth/login"))
+	if err := tx.Commit(ctx); err != nil {
+		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 
-	tokens.SetTokens(c, result.Tokens)
-	h.RefreshWEBCounter.WithLabelValues("success").Inc()
-	span.SetStatus(codes.Ok, "Tokens refreshed successfully")
-	c.Redirect(http.StatusSeeOther, middlewares.GetRedirectURLWithReturnTo(c, "/auth/login"))
+	h.RefreshTokenCounter.WithLabelValues("success").Inc()
+	c.JSON(http.StatusOK, RefreshTokenResult{
+		Tokens: newTokenPair,
+	})
 }

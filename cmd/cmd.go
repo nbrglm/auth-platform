@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"embed"
 	"fmt"
 	"os"
 
@@ -23,8 +22,8 @@ var rootCmd = &cobra.Command{
 // This is the entry point for the command line application.
 // It is responsible for setting up the command line interface and executing the commands.
 // Only supposed to be called once, when the application is started, by the main function.
-func Exec(webFS embed.FS) {
-	initServeCommand(webFS)
+func Exec() {
+	initServeCommand()
 	initKeygenCommand()
 
 	if err := rootCmd.Execute(); err != nil {

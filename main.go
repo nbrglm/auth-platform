@@ -1,13 +1,8 @@
 package main
 
 import (
-	"embed"
-
 	"github.com/nbrglm/auth-platform/cmd"
 )
-
-//go:embed web
-var webFS embed.FS
 
 // @title NBRGLM Auth Platform
 // @version 0.1.0
@@ -21,28 +16,16 @@ var webFS embed.FS
 // @license.name Apache 2.0
 // @license.url https://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost:8080
+// @host localhost:3360
 // @BasePath /
+
+// @securityDefinitions.apiKey APIKeyAuth
+// @in header
+// @name X-NAP-API-Key
 
 // @securityDefinitions.apikey SessionHeaderAuth
 // @in header
-// @name Authorization
-
-// @securityDefinitions.apikey SessionCookieAuth
-// @in cookie
-// @name nap-session-tk
-
-// @securityDefinitions.apikey CSRFTokenCookieAuth
-// @in cookie
-// @name nap-csrf-tk
-
-// @securityDefinitions.apikey CSRFTokenHeaderAuth
-// @in header
-// @name X-CSRF-Token
-
-// @securityDefinitions.apiKey RefreshCookieAuth
-// @in cookie
-// @name nap-refresh-tk
+// @name X-NAP-Session-Token
 
 // @securityDefinitions.apiKey RefreshHeaderAuth
 // @in header
@@ -52,5 +35,5 @@ var webFS embed.FS
 // @externalDocs.url https://nbrglm.com/auth-platform/docs
 func main() {
 	// Execute the root command.
-	cmd.Exec(webFS)
+	cmd.Exec()
 }

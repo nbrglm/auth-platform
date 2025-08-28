@@ -13,7 +13,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 
@@ -24,16 +23,12 @@ import (
 	"github.com/nbrglm/auth-platform/config"
 	"github.com/nbrglm/auth-platform/db"
 	"github.com/nbrglm/auth-platform/internal/logging"
-	"github.com/nbrglm/auth-platform/opts"
 	"go.uber.org/zap"
 )
 
-const RefreshTokenCookieName = "nap-refresh-tk"      // Name of the cookie used to store the refresh token.
-const SessionTokenCookieName = "nap-session-tk"      // Name of the cookie used to store the session token.
+const NAP_API_KeyHeaderName = "X-NAP-API-Key"        // Header name for the API key in requests.
 const RefreshTokenHeaderName = "X-NAP-Refresh-Token" // Header name for the refresh token in API requests.
-const SessionTokenHeaderName = "Authorization"       // Header name for the session token in API requests.
-const RefreshTokenCookiePath = "/auth"               // Path for the refresh token cookie.
-const SessionTokenCookiePath = "/"                   // Path for the session token cookie.
+const SessionTokenHeaderName = "X-NAP-Session-Token" // Header name for the session token in API requests.
 
 // RegisterHandlers registers the token-related routes with the provided Gin engine.
 func RegisterHandlers(engine *gin.Engine) {
@@ -84,44 +79,6 @@ func InitTokens() error {
 	logging.Logger.Info("Tokens initialized successfully", zap.String("privateKeyFile", config.JWT.PrivateKeyFile), zap.String("publicKeyFile", config.JWT.PublicKeyFile))
 
 	return nil
-}
-
-// RemoveTokens removes the session and refresh tokens from the Gin context and the client.
-// It sets the cookies to expire immediately, effectively removing them.
-// If removeSession is true, it removes the session token cookie.
-// If removeRefresh is true, it removes the refresh token cookie.
-// This is useful for logging out the user or clearing tokens after use.
-func RemoveTokens(c *gin.Context, removeSession bool, removeRefresh bool) {
-	if removeSession {
-		c.SetCookie(SessionTokenCookieName, "", -1, SessionTokenCookiePath, "", !opts.Debug, true)
-		logging.Logger.Debug("Removed session token cookie")
-	}
-	if removeRefresh {
-		c.SetCookie(RefreshTokenCookieName, "", -1, RefreshTokenCookiePath, "", !opts.Debug, true)
-		logging.Logger.Debug("Removed refresh token cookie")
-	}
-}
-
-// SetTokens sets the session and refresh tokens in the Gin context (and in-turn, the client).
-func SetTokens(c *gin.Context, tokens *Tokens) {
-	c.SetSameSite(http.SameSiteStrictMode) // Before SetCookie calls
-
-	// Empty if Debug mode, let browser decide
-	refreshDomain := ""
-	if !opts.Debug {
-		refreshDomain = fmt.Sprintf(".%s.%s", config.Public.SubDomain, config.Public.Domain)
-	}
-
-	// Set the refresh token in a cookie
-	c.SetCookie(RefreshTokenCookieName, tokens.RefreshToken, int(time.Until(tokens.RefreshTokenExpiry).Seconds()), RefreshTokenCookiePath, refreshDomain, !opts.Debug, true)
-
-	sessionDomain := ""
-	if !opts.Debug {
-		sessionDomain = fmt.Sprintf(".%s", config.Public.Domain)
-	}
-
-	// Set the session ID in a cookie
-	c.SetCookie(SessionTokenCookieName, tokens.SessionToken, int(time.Until(tokens.SessionTokenExpiry).Seconds()), SessionTokenCookiePath, sessionDomain, !opts.Debug, true)
 }
 
 type AuthPlatformClaims struct {

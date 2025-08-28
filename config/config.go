@@ -24,8 +24,8 @@ const (
 
 // Variables for different configurations
 var (
-	NBRGLMBranding = true // Default to true, can be set to false in the config file
-	Multitenancy   *MultitenancyConfig
+	NBRGLMBranding = true  // Default to true, can be set to false in the config file
+	Multitenancy   = false // Default to false, can be set to true in the config file
 	Public         *PublicConfig
 	Server         *ServerConfig
 	Observability  *ObservabilityConfig
@@ -45,12 +45,6 @@ func Environment() string {
 		return "development"
 	}
 	return "production"
-}
-
-// MultitenancyConfig holds the configuration for multitenancy features
-type MultitenancyConfig struct {
-	// EnableMultitenancy indicates whether multitenancy is enabled
-	Enable bool `json:"enable" yaml:"enable"`
 }
 
 // ObservabilityConfig holds the configuration for observability features
@@ -75,7 +69,7 @@ type ObservabilityConfig struct {
 // subDomain: auth
 //
 // Since, the OIDC issuer URLs will be like:
-// https://tenant.auth.example.com/.well-known/openid-configuration
+// https://auth.example.com/.well-known/openid-configuration
 //
 // Your DNS should be configured to point to the server's IP address,
 // for example:
@@ -99,8 +93,6 @@ type PublicConfig struct {
 	SubDomain string `json:"subDomain" yaml:"subDomain" validate:"required"`
 
 	DebugBaseURL string `json:"debugBaseURL,omitempty" yaml:"debugBaseURL,omitempty" validate:"omitempty,url"`
-
-	Redirects RedirectsConfig `json:"redirects" yaml:"redirects" validate:"required"`
 }
 
 func (p *PublicConfig) GetBaseURL() string {
@@ -312,13 +304,6 @@ type BrandingConfig struct {
 
 	// SupportURL is the URL for support, used in emails, UI, etc.
 	SupportURL string `json:"supportURL" yaml:"supportURL" validate:"required,url"`
-
-	LogoFile string `json:"logoFile" yaml:"logoFile" validate:"required,file"`
-
-	LogoDarkFile string `json:"logoDarkFile" yaml:"logoDarkFile" validate:"omitempty,file"`
-
-	// FaviconFile is the path to the favicon file, used in the browser tab.
-	FaviconFile string `json:"faviconFile" yaml:"faviconFile" validate:"required,file"`
 }
 
 // SecurityConfig holds the security-related configurations for the application.
@@ -329,12 +314,6 @@ type SecurityConfig struct {
 	// The list of API Keys which are allowed to access the API endpoints.
 	// Requests without an API key, or with a key not specified here, will be denied with 401.
 	APIKeys []APIKeyConfig `json:"apiKeys" yaml:"apiKeys" validate:"required,dive"`
-
-	// Cookie configuration.
-	Cookie CookieConfig `json:"cookie" yaml:"cookie" validate:"required"`
-
-	// CSRF protection configuration.
-	CSRF CSRFConfig `json:"csrf" yaml:"csrf" validate:"required"`
 
 	// CORS configuration for the application.
 	CORS CORSConfig `json:"cors" yaml:"cors" validate:"required"`
@@ -354,31 +333,6 @@ type APIKeyConfig struct {
 	Key string `json:"key" yaml:"key" validate:"required"`
 }
 
-// CookieConfig holds the configuration for cookies used in the application.
-type CookieConfig struct {
-	SigningKeyFile string `json:"signingKeyFile" yaml:"signingKeyFile" validate:"required,file"`
-
-	SigningKey []byte `json:"-" yaml:"-" validate:"required"` // This will be set after reading the SigningKeyFile
-}
-
-// CSRFConfig holds the configuration for Cross-Site Request Forgery (CSRF) protection.
-type CSRFConfig struct {
-	// CSRF Token Form Field name, default: nap-csrf-tk
-	TokenName string `json:"tokenName" yaml:"tokenName" validate:"required"`
-
-	// CSRF Token Header name, default: X-CSRF-Token
-	//
-	// Note: If you change this, you need to allow that header in CORS config.
-	TokenHeader string `json:"tokenHeader" yaml:"tokenHeader" validate:"required"`
-
-	// SecretFile is the secret key used for generating CSRF tokens.
-	// Should be 32 bytes long for gorilla/csrf.
-	SecretFile string `json:"secretFile" yaml:"secretFile" validate:"required"`
-
-	// This will be set after reading the SecretFile
-	Secret []byte `json:"-" yaml:"-" validate:"required"`
-}
-
 // CORSConfig holds the configuration for Cross-Origin Resource Sharing (CORS).
 type CORSConfig struct {
 	// AllowedOrigins is a list of origins that are allowed to access the resources.
@@ -391,29 +345,8 @@ type CORSConfig struct {
 	AllowedHeaders []string `json:"allowedHeaders" yaml:"allowedHeaders" validate:"required"`
 }
 
-// RateLimitConfig holds the configuration for rate limiting in the application.
-//
-// If config.Database.Redis is provided, rate limiting is done using Redis, otherwise an in-memory store is used.
-// For HA/K8s setups, it is recommended to use Redis for rate limiting.
+// RateLimitConfig holds the configuration for rate limiting the API.
 type RateLimitConfig struct {
-	// UI holds the configuration for limiting requests to open (unauthenticated) endpoints.
-	UI UIRateLimitConfig `json:"ui" yaml:"ui" validate:"required"`
-
-	// API holds the configuration for limiting API requests.
-	API APIRequestsRateLimitConfig `json:"api" yaml:"api" validate:"required"`
-}
-
-// UIRateLimitConfig holds the configuration for limiting login attempts.
-type UIRateLimitConfig struct {
-	// Rate limit for open (unauthenticated) endpoints, like login, signup, verify-email, etc.
-	OpenEndpointsRate string `json:"openEndpointsRate" yaml:"openEndpointsRate" validate:"required"` // Format: "R-U", where R is requests and U is the time unit (s - per second, m - per minute, h - per hour, d - per day)
-
-	// Rate limit for authenticated endpoints, like user profile, change password, etc.
-	AuthenticatedEndpointsRate string `json:"authenticatedEndpointsRate" yaml:"authenticatedEndpointsRate" validate:"required"` // Format: "R-U", where R is requests and U is the time unit (s - per second, m - per minute, h - per hour, d - per day)
-}
-
-// APIRequestsRateLimitConfig holds the configuration for limiting API requests.
-type APIRequestsRateLimitConfig struct {
 	// Rate limit for API requests.
 	// Format: "R-U", where R is requests and U is the time unit (s - per second, m - per minute, h - per hour, d - per day)
 	Rate string `json:"rate" yaml:"rate" validate:"required"`
@@ -477,7 +410,7 @@ type internalConfigStruct struct {
 	Admins         []AdminCredential   `json:"admins" yaml:"admins" validate:"required,min=1,dive,required"`
 	Public         PublicConfig        `json:"public" yaml:"public" validate:"required"`
 	NBRGLMBranding *bool               `json:"nbrglmBranding,omitempty" yaml:"nbrglmBranding,omitempty"` // NBRGLM branding flag
-	Multitenancy   MultitenancyConfig  `json:"multitenancy" yaml:"multitenancy" validate:"required"`
+	Multitenancy   *bool               `json:"multitenancy" yaml:"multitenancy" validate:"required"`
 	Server         ServerConfig        `json:"server" yaml:"server" validate:"required"`
 	Observability  ObservabilityConfig `json:"observability" yaml:"observability" validate:"required"`
 	Password       PasswordConfig      `json:"password" yaml:"password" validate:"required"`
@@ -540,8 +473,10 @@ func LoadConfigOptions(configFile string) error {
 	if cfg.NBRGLMBranding != nil {
 		NBRGLMBranding = *cfg.NBRGLMBranding
 	}
+	if cfg.Multitenancy != nil {
+		Multitenancy = *cfg.Multitenancy
+	}
 	Admins = cfg.Admins
-	Multitenancy = &cfg.Multitenancy
 	Server = &cfg.Server
 	Public = &cfg.Public
 	Observability = &cfg.Observability
@@ -655,20 +590,6 @@ func setDefaults(cfg *internalConfigStruct) error {
 		// No debug base URL in production mode
 	}
 
-	// Redirects configuration
-	if len(cfg.Public.Redirects.Domains) == 0 {
-		// Auto-add the public domain as valid redirects domain
-		cfg.Public.Redirects.Domains = []string{
-			cfg.Public.Domain,
-		}
-	} else if !slices.Contains(cfg.Public.Redirects.Domains, cfg.Public.Domain) {
-		cfg.Public.Redirects.Domains = append(cfg.Public.Redirects.Domains, cfg.Public.Domain)
-	}
-
-	if cfg.Debug {
-		cfg.Public.Redirects.Domains = append(cfg.Public.Redirects.Domains, "localhost") // Add localhost for debug mode
-	}
-
 	if cfg.JWT.SessionTokenExpiration == 0 {
 		cfg.JWT.SessionTokenExpiration = 3600 // Default to 1 hour
 	}
@@ -710,71 +631,9 @@ func setDefaults(cfg *internalConfigStruct) error {
 		cfg.Branding.CompanyNameShort = cfg.Branding.AppName // Default to AppName if not provided
 	}
 
-	if strings.TrimSpace(cfg.Branding.LogoFile) == "" && strings.TrimSpace(cfg.Branding.LogoDarkFile) == "" {
-		return ConfigError{Message: "Branding LogoFile and LogoDarkFile cannot be both empty"}
-	}
-
-	if strings.TrimSpace(cfg.Branding.LogoFile) != "" && strings.TrimSpace(cfg.Branding.LogoDarkFile) == "" {
-		cfg.Branding.LogoDarkFile = cfg.Branding.LogoFile // Default to LogoFile if LogoDarkFile is not provided
-	} else if strings.TrimSpace(cfg.Branding.LogoFile) == "" && strings.TrimSpace(cfg.Branding.LogoDarkFile) != "" {
-		cfg.Branding.LogoFile = cfg.Branding.LogoDarkFile // Default to LogoDarkFile if LogoFile is not provided
-	}
-
-	if strings.TrimSpace(cfg.Branding.FaviconFile) == "" {
-		return ConfigError{Message: "Branding FaviconFile cannot be empty"}
-	}
-
 	if strings.TrimSpace(cfg.Branding.SupportURL) == "" {
 		return ConfigError{Message: "Branding SupportURL cannot be empty"}
 	}
-
-	if strings.TrimSpace(cfg.Security.CSRF.TokenName) == "" {
-		cfg.Security.CSRF.TokenName = "nap-csrf-tk" // Default CSRF token name
-	}
-
-	if strings.TrimSpace(cfg.Security.CSRF.TokenHeader) == "" {
-		cfg.Security.CSRF.TokenHeader = "X-CSRF-Token" // Default CSRF token header
-	}
-
-	if strings.TrimSpace(cfg.Security.CSRF.SecretFile) == "" {
-		return ConfigError{Message: "CSRF Secret File must be provided!"}
-	}
-
-	if b, err := os.ReadFile(cfg.Security.CSRF.SecretFile); err != nil {
-		return ConfigError{Message: fmt.Sprintf("Unable to read CSRF Secret File %s, does the file exist and has correct permissions?", cfg.Security.CSRF.SecretFile), UnderlyingError: err}
-	} else {
-		bytes, err := utils.DecodeB64Key(string(b))
-		if err != nil {
-			return ConfigError{Message: fmt.Sprintf("Unable to decode CSRF Secret File %s, does the file contain a valid base64 encoded key?", cfg.Security.CSRF.SecretFile), UnderlyingError: err}
-		}
-		if len(bytes) != 32 {
-			return ConfigError{Message: fmt.Sprintf("CSRF Secret File %s must contain a 32 byte long key, got %d bytes!", cfg.Security.CSRF.SecretFile, len(bytes))}
-		}
-
-		// Set the CSRF secret key
-		cfg.Security.CSRF.Secret = bytes
-	}
-
-	if strings.TrimSpace(cfg.Security.Cookie.SigningKeyFile) == "" {
-		return ConfigError{Message: "Cookie Signing Key File must be provided!"}
-	}
-
-	if b, err := os.ReadFile(cfg.Security.Cookie.SigningKeyFile); err != nil {
-		return ConfigError{Message: fmt.Sprintf("Unable to read Cookie Signing Key File %s, does the file exist and has correct permissions?", cfg.Security.Cookie.SigningKeyFile), UnderlyingError: err}
-	} else {
-		bytes, err := utils.DecodeB64Key(string(b))
-		if err != nil {
-			return ConfigError{Message: fmt.Sprintf("Unable to decode Cookie Signing Key File %s, does the file contain a valid base64 encoded key?", cfg.Security.Cookie.SigningKeyFile), UnderlyingError: err}
-		}
-		if len(bytes) < 32 {
-			return ConfigError{Message: fmt.Sprintf("Cookie Signing Key File %s must contain at least a 32 byte long key, got %d bytes!", cfg.Security.Cookie.SigningKeyFile, len(bytes))}
-		}
-
-		// Set the cookie signing key
-		cfg.Security.Cookie.SigningKey = bytes
-	}
-
-	// We can let this be empty
 
 	if len(cfg.Security.CORS.AllowedMethods) == 0 {
 		// Default to common methods if not specified
@@ -802,18 +661,6 @@ func setDefaults(cfg *internalConfigStruct) error {
 
 	if slices.Contains(cfg.Security.CORS.AllowedHeaders, "*") {
 		return ConfigError{Message: "Invalid value: AllowedHeaders contains invalid '*' value!"}
-	}
-
-	if strings.TrimSpace(cfg.Security.RateLimit.UI.OpenEndpointsRate) == "" {
-		cfg.Security.RateLimit.UI.OpenEndpointsRate = "10-m"
-	}
-
-	if strings.TrimSpace(cfg.Security.RateLimit.UI.AuthenticatedEndpointsRate) == "" {
-		cfg.Security.RateLimit.UI.AuthenticatedEndpointsRate = "60-m"
-	}
-
-	if strings.TrimSpace(cfg.Security.RateLimit.API.Rate) == "" {
-		cfg.Security.RateLimit.API.Rate = "120-s" // Default to 120 requests per second
 	}
 
 	if cfg.Stores.PostgreSQL.DSN == "" {

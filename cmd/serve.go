@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"net/http"
 	"os"
@@ -22,6 +21,7 @@ import (
 	"github.com/nbrglm/auth-platform/internal/store"
 	"github.com/nbrglm/auth-platform/internal/tokens"
 	"github.com/nbrglm/auth-platform/internal/tracing"
+	_ "github.com/nbrglm/auth-platform/oapispec"
 	"github.com/nbrglm/auth-platform/opts"
 	"github.com/nbrglm/auth-platform/utils"
 	"github.com/spf13/cobra"
@@ -30,13 +30,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func initServeCommand(webFS embed.FS) {
+func initServeCommand() {
 	var serveCommand = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the server and listen for incoming requests",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Start the server
-			runServer(cmd, webFS)
+			runServer(cmd)
 		},
 	}
 
@@ -46,7 +46,7 @@ func initServeCommand(webFS embed.FS) {
 	rootCmd.AddCommand(serveCommand)
 }
 
-func runServer(cmd *cobra.Command, webFS embed.FS) {
+func runServer(cmd *cobra.Command) {
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM)
 
@@ -69,36 +69,6 @@ func runServer(cmd *cobra.Command, webFS embed.FS) {
 	engine := gin.Default()
 	if opts.Debug {
 		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-	}
-
-	// Add CORS middleware
-	middlewares.InitCORS(engine)
-
-	if !opts.Debug {
-		// CSRF if not in debug mode
-		engine.Use(middlewares.CSRFMiddleware())
-	}
-
-	//TODO: Remove this middleware once the cookie handling is done properly.
-	// engine.Use(func(c *gin.Context) {
-	// 	fmt.Printf("\nINITIAL: \nRAW COOKIE HEADER: %s\nPATH: %s\n", c.Request.Header.Get("Cookie"), c.Request.URL.Path)
-	// 	c.Next()
-	// })
-
-	// Add the API Key middleware, before rate limiting middlewares,
-	// since those need access to keys for rate limiting
-	engine.Use(middlewares.APIKeyMiddleware())
-
-	// Add the returnTo URL middleware
-	engine.Use(middlewares.ReturnToURLMiddleware())
-
-	// Add the middleware for storing page errors in the context
-	// by retrieving them from the cookies.
-	engine.Use(middlewares.PageErrorStorageMiddleware())
-
-	if opts.Debug {
 		logging.Logger.Warn("Debug mode is enabled! This is not recommended for production environments. Use with caution. The following behaviour is used.", zap.String("Debug Mode", "Enabled"), zap.String("API Docs", fmt.Sprintf("%s/docs", config.Public.GetBaseURL())), zap.String("CSRF Protection", "Disabled"))
 		// Setup docs
 		engine.GET("/docs", func(ctx *gin.Context) {
@@ -121,7 +91,16 @@ func runServer(cmd *cobra.Command, webFS embed.FS) {
 	</html>`)
 		})
 		engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
+
+	// Add CORS middleware
+	middlewares.InitCORS(engine)
+
+	// Add the API Key middleware, before rate limiting middlewares,
+	// since those need access to keys for rate limiting
+	engine.Use(middlewares.APIKeyMiddleware())
 
 	// Initialize the rate limiter, before adding the handler routes.
 	if err := middlewares.InitRateLimitStore(); err != nil {
@@ -130,19 +109,19 @@ func runServer(cmd *cobra.Command, webFS embed.FS) {
 		os.Exit(1)
 	}
 
+	// Add the rate limit middleware AFTER the API Key middleware,
+	// since it needs access to the API key to apply rate limits.
+	engine.Use(middlewares.RateLimitMiddleware())
+
 	// Register the routes
 	handlers.RegisterAPIRoutes(engine)
 
-	// engine.GET("/", func(ctx *gin.Context) {
-	// 	claims, exists := ctx.Get(middlewares.CtxSessionTokenClaimsKey)
-	// 	if !exists {
-	// 		ctx.JSON(http.StatusOK, gin.H{
-	// 			"message": "Welcome to the NBRGLM Auth Platform! Please login or signup to continue.",
-	// 		})
-	// 		return
-	// 	}
-	// 	ctx.JSON(http.StatusOK, claims)
-	// })
+	// Health check endpoint
+	engine.GET("/", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"success": true,
+		})
+	})
 
 	// Initialize the metrics collection system
 	//
