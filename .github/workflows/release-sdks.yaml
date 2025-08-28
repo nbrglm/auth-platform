@@ -23,6 +23,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
       
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -114,4 +117,4 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
           git commit -m "Update SDKs to $VERSION" || (echo "No changes to commit" && exit 1)
-          git push origin main
+          git push -u origin main
