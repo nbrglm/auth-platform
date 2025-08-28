@@ -2,6 +2,10 @@ module github.com/nbrglm/auth-platform
 
 go 1.24.4
 
+ignore (
+	sdks
+)
+
 require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-playground/validator/v10 v10.26.0
