@@ -7,8 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2/types"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/internal/logging"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/internal/logging"
 	"go.uber.org/zap"
 )
 

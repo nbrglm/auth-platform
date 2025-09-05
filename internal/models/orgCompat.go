@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nbrglm/auth-platform/db"
+	"github.com/nbrglm/nexeres/db"
 )
 
 type OrgCompat struct {

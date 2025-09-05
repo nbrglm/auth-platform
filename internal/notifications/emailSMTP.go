@@ -5,7 +5,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/nbrglm/auth-platform/internal/logging"
+	"github.com/nbrglm/nexeres/internal/logging"
 	"go.uber.org/zap"
 )
 

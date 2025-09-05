@@ -13,8 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/opts"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/opts"
 )
 
 // BucketPolicyVersion is the version of the S3 bucket policy.
@@ -199,8 +199,9 @@ func (s *S3Store) Init(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("failed to create bucket %s: %w", *s.Bucket, err)
 			}
+		} else {
+			return fmt.Errorf("failed to check bucket existence: %w", err)
 		}
-		return fmt.Errorf("failed to check bucket existence: %w", err)
 	}
 
 	// if no error, the bucket exists
@@ -235,9 +236,9 @@ func (s *S3Store) Init(ctx context.Context) error {
 			}
 			// Bucket policy created successfully and bucket exists, return nil.
 			return nil
+		} else {
+			return fmt.Errorf("failed to get bucket policy: %w", err)
 		}
-
-		return fmt.Errorf("failed to get bucket policy: %w", err)
 	}
 
 	bucketPolicy := S3BucketPolicy{}
@@ -273,9 +274,9 @@ func (s *S3Store) Init(ctx context.Context) error {
 			// We can return an error indicating that the desired policy does not exist.
 			// This is a fatal error, as the bucket policy needs to be created manually or by calling this method again (on restart).
 			return fmt.Errorf("desired bucket policy does not exist, auto creation failed, please create it manually: %s, or restart this instance", desiredPolicyStatement.Sid)
+		} else {
+			return fmt.Errorf("failed to put bucket policy: %w", err)
 		}
-
-		return fmt.Errorf("failed to put bucket policy: %w", err)
 	}
 
 	// Bucket policy updated successfully, return nil.

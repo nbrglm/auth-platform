@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/nbrglm/auth-platform/config"
+	"github.com/nbrglm/nexeres/config"
 	"github.com/redis/go-redis/v9"
 	"github.com/ulule/limiter/v3"
 	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
@@ -29,7 +29,7 @@ func InitRateLimitStore() error {
 	rateLimitStore, err := sredis.NewStoreWithOptions(
 		redisClient,
 		limiter.StoreOptions{
-			Prefix: "nbrglm_auth_platform_rate_limit",
+			Prefix: "nexeres_rate_limit",
 		},
 	)
 	if err != nil {

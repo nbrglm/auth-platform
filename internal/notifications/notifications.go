@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/internal/logging"
-	"github.com/nbrglm/auth-platform/internal/notifications/templates"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/internal/logging"
+	"github.com/nbrglm/nexeres/internal/notifications/templates"
 	"go.uber.org/zap"
 )
 
@@ -38,11 +38,6 @@ var SMSEnabled = false
 //
 // Sets EmailEnabled to true if the email sender is configured.
 func InitEmail() {
-	if config.Notifications.Email == nil {
-		logging.Logger.Warn("Email notifications are not configured, skipping email sender initialization... this will result in an error every time an email is sent")
-		return
-	}
-
 	switch config.Notifications.Email.Provider {
 	case "smtp":
 		EmailSender = NewSMTPEmailSender(config.Notifications.Email.SMTP.Host, config.Notifications.Email.SMTP.Port, config.Notifications.Email.SMTP.FromAddress, config.Notifications.Email.SMTP.Password)
@@ -68,6 +63,39 @@ func InitSMS() {
 
 var ErrEmailSenderNotSet = fmt.Errorf("email sender is not set, please set it using the config file! notifications.email.provider and the respective provider config")
 
+type SendAdminLoginEmailParams struct {
+	Email     string
+	Code      string
+	ExpiresAt time.Time
+}
+
+// SendAdminLoginEmail sends an admin login email to the specified recipient.
+// It uses the global EmailSender instance to send the email.
+// The email includes the OTP code and its expiration time.
+func SendAdminLoginEmail(ctx context.Context, params SendAdminLoginEmailParams) error {
+	rendered, err := templates.RenderEmailTemplate(templates.TemplateData{
+		AppName:     config.Branding.AppName,
+		UserName:    "User",
+		UserEmail:   params.Email,
+		ActionURL:   params.Code,
+		ExpiresAt:   params.ExpiresAt,
+		CompanyName: config.Branding.CompanyNameShort,
+		SupportURL:  config.Branding.SupportURL,
+	}, *templates.AdminLoginTemplate)
+	if err != nil {
+		return err
+	}
+
+	logging.Logger.Debug("Sending admin login email", zap.String("to", params.Email), zap.String("subject", rendered.Subject), zap.String("html_body", rendered.HTMLBody), zap.String("plain_text_body", rendered.PlainTextBody))
+
+	err = sendEmail(params.Email, rendered.Subject, rendered.HTMLBody, rendered.PlainTextBody)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type SendWelcomeEmailParams struct {
 	User struct {
 		Email     string
@@ -82,7 +110,7 @@ type SendWelcomeEmailParams struct {
 // It uses the global EmailSender instance to send the email.
 // The email also includes a link to verify the email address.
 func SendWelcomeEmail(ctx context.Context, params SendWelcomeEmailParams) error {
-	verificationUrl := fmt.Sprintf("%s/auth/verify-email?token=%s", config.Public.GetBaseURL(), params.VerificationToken)
+	verificationUrl := fmt.Sprintf("%s?token=%s", config.Notifications.Email.Endpoints.VerificationEmail, params.VerificationToken)
 	rendered, err := templates.RenderEmailTemplate(templates.TemplateData{
 		AppName:     config.Branding.AppName,
 		UserName:    getUserName(params.User.FirstName, params.User.LastName),
@@ -97,12 +125,7 @@ func SendWelcomeEmail(ctx context.Context, params SendWelcomeEmailParams) error 
 	}
 
 	logging.Logger.Debug("Sending welcome email", zap.String("to", params.User.Email), zap.String("subject", rendered.Subject), zap.String("html_body", rendered.HTMLBody), zap.String("plain_text_body", rendered.PlainTextBody))
-
-	if EmailSender == nil {
-		return ErrEmailSenderNotSet
-	}
-
-	err = EmailSender.SendEmail(params.User.Email, rendered.Subject, rendered.HTMLBody, rendered.PlainTextBody)
+	err = sendEmail(params.User.Email, rendered.Subject, rendered.HTMLBody, rendered.PlainTextBody)
 	if err != nil {
 		return err
 	}
@@ -110,6 +133,15 @@ func SendWelcomeEmail(ctx context.Context, params SendWelcomeEmailParams) error 
 	return nil
 }
 
+// sendEmail is a helper function to send an email using the global EmailSender instance.
+func sendEmail(to string, subject string, htmlContent, plainTextContent string) error {
+	if EmailSender == nil {
+		return ErrEmailSenderNotSet
+	}
+	return EmailSender.SendEmail(to, subject, htmlContent, plainTextContent)
+}
+
+// getUserName constructs a user name from the provided first and last names.
 func getUserName(firstName, lastName *string) string {
 	if firstName == nil && lastName == nil {
 		return "User"

@@ -1,0 +1,10 @@
+version: "3"
+
+tasks:
+  dev:
+    cmds:
+      - npm run build
+    watch: true
+    sources:
+      - src/**/*.ts
+    desc: Run the development server with auto-reloading on changes

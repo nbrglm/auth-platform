@@ -3,15 +3,15 @@ version: "3"
 dotenv: [".env.local", ".env"]
 
 env:
-  DEV_DATA_DIR: "./data/nap-data"
+  DEV_DATA_DIR: "./data/nexeres-data"
 
 tasks:
   setup-pgadmin:
     desc: Setup pgAdmin for managing the PostgreSQL database
     cmds:
       - echo "Setting up pgAdmin..."
-      - sudo chown -R 5050:5050 ./data/nap-pgadmin-data
-      - echo "pgAdmin setup complete. Permissions set to 5050:5050. for ./data/nap-pgadmin-data"
+      - sudo chown -R 5050:5050 ./data/nexeres-pgadmin-data
+      - echo "pgAdmin setup complete. Permissions set to 5050:5050. for ./data/nexeres-pgadmin-data"
 
   oapi-spec-gen:
     desc: Generate the OpenAPI specification from the Go code
@@ -24,29 +24,19 @@ tasks:
   db-migrate-up-all:
     desc: run the database migrations
     dir: sqlc/migrations
-    cmd: migrate -source file://$(pwd) -database "postgres://$NAP_DB_USER:$NAP_DB_PASSWORD@$NAP_DB_HOST:$NAP_DB_PORT/$NAP_DB_NAME?sslmode=disable" up
+    cmd: migrate -source file://$(pwd) -database "postgres://$NEXERES_DB_USER:$NEXERES_DB_PASSWORD@$NEXERES_DB_HOST:$NEXERES_DB_PORT/$NEXERES_DB_NAME?sslmode=disable" up
 
   db-migrate-down-all:
     desc: rollback all the database migrations
     dir: sqlc/migrations
-    cmd: migrate -source file://$(pwd) -database "postgres://$NAP_DB_USER:$NAP_DB_PASSWORD@$NAP_DB_HOST:$NAP_DB_PORT/$NAP_DB_NAME?sslmode=disable" down
+    cmd: migrate -source file://$(pwd) -database "postgres://$NEXERES_DB_USER:$NEXERES_DB_PASSWORD@$NEXERES_DB_HOST:$NEXERES_DB_PORT/$NEXERES_DB_NAME?sslmode=disable" down
 
   dev:
     desc: Run the development server
-    deps:
-      - tw-watch
-      - go-watch
-    silent: false
-    run: once
-
-  go-watch:
-    desc: Run the Go code in watch mode
     cmds:
-      - CompileDaemon -exclude-dir .git -exclude-dir run-logs -exclude-dir public -exclude-dir run -exclude-dir .data -include config.nbrglm.yaml -include *.html -include *.css -build "go build -o build/debug/backend" -command "./build/debug/backend serve --config config.nbrglm.yaml"
-
-  tw-watch:
-    desc: Run the Tailwind CSS CLI in watch mode
-    cmd: npx @tailwindcss/cli -i ./web/input.css -o ./web/public/index.css --watch
+      - docker compose up -d
+      - sleep 5
+      - CompileDaemon -exclude-dir .git -exclude-dir run-logs -exclude-dir public -exclude-dir run -exclude-dir data -include config.nbrglm.yaml -include *.html -include *.css -build "go build -o build/debug/backend" -command "./build/debug/backend serve --config config.nbrglm.yaml"
 
   rebuild-db-dev:
     desc: Rebuild the database

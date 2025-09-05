@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nbrglm/auth-platform/internal/cache"
-	"github.com/nbrglm/auth-platform/internal/metrics"
-	"github.com/nbrglm/auth-platform/internal/models"
+	"github.com/nbrglm/nexeres/internal/cache"
+	"github.com/nbrglm/nexeres/internal/metrics"
+	"github.com/nbrglm/nexeres/internal/models"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -19,7 +19,7 @@ func NewFlowHandler() *FlowHandler {
 	return &FlowHandler{
 		FlowGetCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "nbrglm_auth_platform",
+				Namespace: "nexeres",
 				Subsystem: "auth",
 				Name:      "user_flow_get_requests",
 				Help:      "Total number of get requests for user flow data",
@@ -55,8 +55,13 @@ func (h *FlowHandler) HandleGetFlow(c *gin.Context) {
 	flow, err := cache.GetFlow(c.Request.Context(), flowId)
 
 	if err != nil {
-		h.FlowGetCounter.WithLabelValues("not_found").Inc()
-		c.JSON(http.StatusBadRequest, models.NewErrorResponse("Flow not found", "Not Found", http.StatusBadRequest, nil))
+		if err == cache.ErrKeyNotFound {
+			h.FlowGetCounter.WithLabelValues("not_found").Inc()
+			c.JSON(http.StatusBadRequest, models.NewErrorResponse("Flow not found", "Not Found", http.StatusBadRequest, nil))
+			return
+		}
+		h.FlowGetCounter.WithLabelValues("error").Inc()
+		c.JSON(http.StatusBadRequest, models.NewErrorResponse(models.GenericErrorMessage, "Error fetching flow data", http.StatusBadRequest, nil))
 		return
 	}
 

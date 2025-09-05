@@ -1,4 +1,4 @@
-name: Release SDKs
+name: Generate OpenAPI Spec
 
 on:
   push:
@@ -6,16 +6,12 @@ on:
       - 'v*'
 env:
   SDKS_DIR: "sdks"
-  GO_CLIENT_DIR: "sdks/auth_platform_go_sdk"
-  NODE_CLIENT_DIR: "sdks/auth_platform_node_sdk"
-  PYTHON_CLIENT_DIR: "sdks/auth_platform_py_sdk"
+  GO_CLIENT_DIR: "sdks/nexeres-go"
+  NODE_CLIENT_DIR: "sdks/nexeres-node"
   SPEC_FILE: "sdks/swagger.yaml"
-  GO_GEN_SDK_DIR: ./go-client
-  NODE_GEN_SDK_DIR: ./typescript-node-client
-  PYTHON_GEN_SDK_DIR: ./python-client
 
 jobs:
-  generate-and-push-sdks:
+  update-spec-and-sdks:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -36,85 +32,42 @@ jobs:
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Clean up old SDKs
-        run: rm -rf $SDKS_DIR
+      - name: Clean up old OpenAPI Spec
+        run: rm -rf $SPEC_FILE
       
       - name: Generate OpenAPI Spec
         run: |
           go install github.com/swaggo/swag/cmd/swag@v1.16.4
-          swag init -o $SDKS_DIR
-          cp $SDKS_DIR/swagger.yaml swagger.yaml
-          rm -rf $SDKS_DIR/*
-          mkdir -p $SDKS_DIR $GO_CLIENT_DIR $NODE_CLIENT_DIR $PYTHON_CLIENT_DIR
-          mv swagger.yaml $SPEC_FILE
+          swag init -o $SDKS_DIR/temp
+          mv $SDKS_DIR/temp/swagger.yaml $SPEC_FILE
+          rm -rf $SDKS_DIR/temp
 
-      - name: Create Generator Config Golang
-        run: |
-          touch $SDKS_DIR/openapi-generator-config.go.yaml
-          echo "packageName: auth_platform_go_sdk" >> $SDKS_DIR/openapi-generator-config.go.yaml
-          echo "packageVersion: ${VERSION#v}" >> $SDKS_DIR/openapi-generator-config.go.yaml
-          echo "disallowAdditionalPropertiesIfNotPresent: false" >> $SDKS_DIR/openapi-generator-config.go.yaml
-
-      - name: Generate Go Client Library w/ the OpenAPITools Generator
-        uses: openapi-generators/openapitools-generator-action@v1.5.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          generator: go
-          config-file: ${{env.SDKS_DIR}}/openapi-generator-config.go.yaml
-          openapi-file: ${{env.SPEC_FILE}}
+          node-version: '22'
 
-      - name: Move Go SDK
+      - name: Bump version in Node SDK
+        working-directory: ${{env.NODE_CLIENT_DIR}}
         run: |
-          cp -r $GO_GEN_SDK_DIR/* $GO_CLIENT_DIR/
-          rm -rf $GO_GEN_SDK_DIR
+          npm --no-git-tag-version version $VERSION
 
-      - name: Create Generator Config NodeJS
-        run: |
-          touch $SDKS_DIR/openapi-generator-config.node.yaml
-          echo "npmName: '@nbrglm-devs/auth-platform-node-sdk'" >> $SDKS_DIR/openapi-generator-config.node.yaml
-          echo "npmVersion: ${VERSION#v}" >> $SDKS_DIR/openapi-generator-config.node.yaml
-          echo "licenseName: Apache-2.0" >> $SDKS_DIR/openapi-generator-config.node.yaml
-          echo "disallowAdditionalPropertiesIfNotPresent: false" >> $SDKS_DIR/openapi-generator-config.node.yaml
-
-      - name: Generate Node Client Library w/ the OpenAPITools Generator
-        uses: openapi-generators/openapitools-generator-action@v1.5.0
-        with:
-          generator: typescript-node
-          config-file: ${{env.SDKS_DIR}}/openapi-generator-config.node.yaml
-          openapi-file: ${{env.SPEC_FILE}}
-
-      - name: Move Node SDK
-        run: |
-          cp -r $NODE_GEN_SDK_DIR/* $NODE_CLIENT_DIR/
-          rm -rf $NODE_GEN_SDK_DIR
-
-      - name: Create Generator Config Python
-        run: |
-          touch $SDKS_DIR/openapi-generator-config.python.yaml
-          echo "packageName: auth_platform_py_sdk" >> $SDKS_DIR/openapi-generator-config.python.yaml
-          echo "projectName: auth-platform-py-sdk" >> $SDKS_DIR/openapi-generator-config.python.yaml
-          echo "packageUrl: https://github.com/nbrglm/auth-platform-py-sdk" >> $SDKS_DIR/openapi-generator-config.python.yaml
-          echo "packageVersion: ${VERSION#v}" >> $SDKS_DIR/openapi-generator-config.python.yaml
-
-      - name: Generate Python Client Library w/ the OpenAPITools Generator
-        uses: openapi-generators/openapitools-generator-action@v1.5.0
-        with:
-          generator: python
-          config-file: ${{env.SDKS_DIR}}/openapi-generator-config.python.yaml
-          openapi-file: ${{env.SPEC_FILE}}
-
-      - name: Move Python SDK
-        run: |
-          cp -r $PYTHON_GEN_SDK_DIR/* $PYTHON_CLIENT_DIR/
-          rm -rf $PYTHON_GEN_SDK_DIR
-
-      - name: Commit and Push SDKs
+      - name: Push Spec and Node SDK changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh auth setup-git
-          gh auth status
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Update SDKs to $VERSION" || (echo "No changes to commit" && exit 1)
+          git commit -m "Update OpenAPI Spec and Node SDK to $VERSION" || echo "No changes to commit"
           git push -u origin main
+      
+      - name: Publish Node SDK to npm
+        working-directory: ${{env.NODE_CLIENT_DIR}}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm ci
+          npm run build
+          npm publish

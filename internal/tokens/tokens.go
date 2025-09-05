@@ -20,15 +20,17 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/db"
-	"github.com/nbrglm/auth-platform/internal/logging"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/db"
+	"github.com/nbrglm/nexeres/internal/logging"
 	"go.uber.org/zap"
 )
 
-const NAP_API_KeyHeaderName = "X-NAP-API-Key"        // Header name for the API key in requests.
-const RefreshTokenHeaderName = "X-NAP-Refresh-Token" // Header name for the refresh token in API requests.
-const SessionTokenHeaderName = "X-NAP-Session-Token" // Header name for the session token in API requests.
+const NEXERES_API_KeyHeaderName = "X-NEXERES-API-Key"             // Header name for the API key in requests.
+const RefreshTokenHeaderName = "X-NEXERES-Refresh-Token"          // Header name for the refresh token in API requests.
+const SessionTokenHeaderName = "X-NEXERES-Session-Token"          // Header name for the session token in API requests.
+const AdminTokenHeaderName = "X-NEXERES-Admin-Token"              // Header name for the admin token in API requests.
+const AdminTokenExpiryHeaderName = "X-NEXERES-Admin-Token-Expiry" // Header name for the admin token expiry time in API responses.
 
 // RegisterHandlers registers the token-related routes with the provided Gin engine.
 func RegisterHandlers(engine *gin.Engine) {
@@ -81,7 +83,7 @@ func InitTokens() error {
 	return nil
 }
 
-type AuthPlatformClaims struct {
+type NexeresClaims struct {
 	// The registered claims from the JWT standard.
 	// This struct embeds jwt.RegisteredClaims to include standard JWT claims.
 	jwt.RegisteredClaims
@@ -89,45 +91,45 @@ type AuthPlatformClaims struct {
 	// Custom claims can be added here.
 
 	// Organization information
-	OrgSlug string `json:"org_slug"`
-	OrgName string `json:"org_name"`
-	OrgId   string `json:"org_id"`
+	OrgSlug string `json:"orgSlug"`
+	OrgName string `json:"orgName"`
+	OrgId   string `json:"orgId"`
 
 	// User information
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
-	UserFname     string `json:"user_fname"`
-	UserLname     string `json:"user_lname"`
-	UserAvatarURL string `json:"user_avatar_url,omitempty"` // Optional user avatar URL
-	UserOrgRole   string `json:"user_org_role"`
+	UserFname     string `json:"userFname"`
+	UserLname     string `json:"userLname"`
+	UserAvatarURL string `json:"userAvatarUrl,omitempty"` // Optional user avatar URL
+	UserOrgRole   string `json:"userOrgRole"`
 }
 
 // Tokens represents the result of generating a new token pair.
 type Tokens struct {
 	// SessionId is the unique identifier for the session.
-	SessionId uuid.UUID `json:"session_id"`
+	SessionId uuid.UUID `json:"sessionId"`
 	// SessionToken is the generated session token.
 	//
 	// This is a jwt which is base64.RawURLEncoding encoded.
 	// YOU NEED TO DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.
 	// DO NOT USE IT AS IS. VALIDATION WILL FAIL WITHOUT DECODING.
 	// ONLY WHEN DECODED, YOU SHOULD PASS IT TO THE THINGS THAT REQUIRE THE SESSION TOKEN.
-	SessionToken string `json:"session_token"`
+	SessionToken string `json:"sessionToken"`
 	// SessionTokenExpiry is the expiration time of the session token.
-	SessionTokenExpiry time.Time `json:"session_token_expiry"`
+	SessionTokenExpiry time.Time `json:"sessionTokenExpiry"`
 	// RefreshToken is the generated refresh token.
 	//
 	// This is base64.RawURLEncoding encoded.
 	// DO NOT DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refreshToken"`
 	// RefreshTokenExpiry is the expiration time of the refresh token.
-	RefreshTokenExpiry time.Time `json:"refresh_token_expiry"`
+	RefreshTokenExpiry time.Time `json:"refreshTokenExpiry"`
 }
 
 // GenerateTokens generates a new session and refresh token pair for the given user ID and claims.
 //
 // NOTE: This function will NOT store the tokens in the database.
-func GenerateTokens(userId uuid.UUID, claims AuthPlatformClaims) (*Tokens, error) {
+func GenerateTokens(userId uuid.UUID, claims NexeresClaims) (*Tokens, error) {
 	now := time.Now().UTC()
 
 	sessionId, err := uuid.NewV7()
@@ -176,7 +178,7 @@ func GenerateTokens(userId uuid.UUID, claims AuthPlatformClaims) (*Tokens, error
 // RefreshSession refreshes the session by generating a new session and refresh token pair.
 // All the non-standard claims have to be set before passing in the claims parameter.
 // It takes the old session and claims as the parameter, and gives new tokens.
-func RefreshSessionTokens(session db.Session, claims AuthPlatformClaims) (*Tokens, error) {
+func RefreshSessionTokens(session db.Session, claims NexeresClaims) (*Tokens, error) {
 	now := time.Now().UTC()
 
 	// Calculate expiration durations

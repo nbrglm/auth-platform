@@ -10,20 +10,20 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/handlers"
-	"github.com/nbrglm/auth-platform/internal/cache"
-	"github.com/nbrglm/auth-platform/internal/logging"
-	"github.com/nbrglm/auth-platform/internal/metrics"
-	"github.com/nbrglm/auth-platform/internal/middlewares"
-	"github.com/nbrglm/auth-platform/internal/notifications"
-	"github.com/nbrglm/auth-platform/internal/notifications/templates"
-	"github.com/nbrglm/auth-platform/internal/store"
-	"github.com/nbrglm/auth-platform/internal/tokens"
-	"github.com/nbrglm/auth-platform/internal/tracing"
-	_ "github.com/nbrglm/auth-platform/oapispec"
-	"github.com/nbrglm/auth-platform/opts"
-	"github.com/nbrglm/auth-platform/utils"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/handlers"
+	"github.com/nbrglm/nexeres/internal/cache"
+	"github.com/nbrglm/nexeres/internal/logging"
+	"github.com/nbrglm/nexeres/internal/metrics"
+	"github.com/nbrglm/nexeres/internal/middlewares"
+	"github.com/nbrglm/nexeres/internal/notifications"
+	"github.com/nbrglm/nexeres/internal/notifications/templates"
+	"github.com/nbrglm/nexeres/internal/store"
+	"github.com/nbrglm/nexeres/internal/tokens"
+	"github.com/nbrglm/nexeres/internal/tracing"
+	_ "github.com/nbrglm/nexeres/oapispec"
+	"github.com/nbrglm/nexeres/opts"
+	"github.com/nbrglm/nexeres/utils"
 	"github.com/spf13/cobra"
 	swaggerFiles "github.com/swaggo/files"     // swagger embed files
 	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
@@ -40,7 +40,7 @@ func initServeCommand() {
 		},
 	}
 
-	serveCommand.Flags().StringVar(opts.ConfigPath, "config", "/etc/nbrglm/workspace/auth-platform/config.yaml", "Path to the config file")
+	serveCommand.Flags().StringVar(opts.ConfigPath, "config", "/etc/nbrglm/workspace/nexeres/config.yaml", "Path to the config file")
 	serveCommand.MarkPersistentFlagFilename("config", "yaml", "yml")
 
 	rootCmd.AddCommand(serveCommand)

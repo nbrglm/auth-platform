@@ -8,7 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	nonstd_validators "github.com/go-playground/validator/v10/non-standard/validators"
 	"github.com/google/uuid"
-	"github.com/nbrglm/auth-platform/opts"
+	"github.com/nbrglm/nexeres/opts"
 )
 
 func RegisterCustomValidators(v *validator.Validate) {

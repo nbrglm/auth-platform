@@ -5,15 +5,17 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/internal/logging"
-	"github.com/nbrglm/auth-platform/internal/models"
-	"github.com/nbrglm/auth-platform/internal/tokens"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/internal/cache"
+	"github.com/nbrglm/nexeres/internal/logging"
+	"github.com/nbrglm/nexeres/internal/models"
+	"github.com/nbrglm/nexeres/internal/tokens"
 	"go.uber.org/zap"
 )
 
@@ -23,6 +25,8 @@ const CtxRefreshToken = "refreshToken"
 const CtxSessionClaims = "sessionClaims"
 const CtxSessionTokenClaims = "sessionTokenClaims"
 const CtxSessionRefreshTokenKey = "refreshToken"
+const CtxAdminToken = "adminToken"
+const CtxAdminEmail = "adminEmail"
 
 type AuthMode string
 
@@ -30,6 +34,7 @@ const AuthModeEither AuthMode = "either"
 const AuthModeSession AuthMode = "session"
 const AuthModeRefresh AuthMode = "refresh"
 const AuthModeBoth AuthMode = "both"
+const AuthModeAdmin AuthMode = "admin"
 
 func RequireAuth(mode AuthMode) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -65,6 +70,13 @@ func RequireAuth(mode AuthMode) gin.HandlerFunc {
 				ctx.AbortWithStatusJSON(http.StatusUnauthorized, models.NewErrorResponse("No session or refresh token provided", "Provide both a session token and a refresh token!", http.StatusUnauthorized, nil).Filter())
 				return
 			}
+		case AuthModeAdmin:
+			_, aExists := ctx.Get(CtxAdminToken)
+			if !aExists {
+				logging.Logger.Debug("No admin token provided")
+				ctx.AbortWithStatusJSON(http.StatusUnauthorized, models.NewErrorResponse("No admin token provided", "Provide an admin token!", http.StatusUnauthorized, nil).Filter())
+				return
+			}
 		default:
 			logging.Logger.Error("Invalid auth mode provided to RequireAuth middleware", zap.String("mode", string(mode)))
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, models.NewErrorResponse("Internal server error", "An internal server error occurred", http.StatusInternalServerError, nil).Filter())
@@ -76,24 +88,26 @@ func RequireAuth(mode AuthMode) gin.HandlerFunc {
 
 func APIKeyMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		apiKey := strings.TrimSpace(ctx.GetHeader(tokens.NAP_API_KeyHeaderName))
+		apiKey := strings.TrimSpace(ctx.GetHeader(tokens.NEXERES_API_KeyHeaderName))
 
 		if apiKey == "" {
 			logging.Logger.Warn("Missing API key in request")
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing API key"})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, models.NewErrorResponse("Unauthorized access!", "Missing API key", http.StatusUnauthorized, nil).Filter())
 			return
 		}
 
 		// Validate the API Key
-		for _, key := range config.Security.APIKeys {
+		exists := slices.ContainsFunc(config.Security.APIKeys, func(key config.APIKeyConfig) bool {
 			if apiKey == key.Key {
 				ctx.Set(CtxAPIKeyGetter, key)
-				break
+				return true
 			}
-		}
-		if _, exists := ctx.Get(CtxAPIKeyGetter); !exists {
+			return false
+		})
+
+		if !exists {
 			logging.Logger.Warn("Invalid API key provided")
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, models.NewErrorResponse("Unauthorized access!", "Invalid API key", http.StatusUnauthorized, nil).Filter())
 			return
 		}
 
@@ -120,17 +134,32 @@ func APIKeyMiddleware() gin.HandlerFunc {
 		if refreshToken != "" {
 			ctx.Set(CtxRefreshToken, refreshToken)
 		}
+
+		// Admin token
+		adminToken := strings.TrimSpace(ctx.GetHeader(tokens.AdminTokenHeaderName))
+		if adminToken != "" {
+			hash := tokens.HashAdminToken(adminToken)
+			sess, err := cache.GetAdminSession(ctx.Request.Context(), hash) // Just to check if it exists
+			if err != nil || sess == nil {
+				logging.Logger.Debug("Failed to validate admin token", zap.Error(err))
+			} else {
+				ctx.Set(CtxAdminToken, hash) // Store the HASH of the admin token in the context
+				ctx.Set(CtxAdminEmail, sess.Email)
+			}
+		}
+
+		ctx.Next()
 	}
 }
 
 // ValidateSessionToken validates the provided session token and returns the claims if valid.
 // It returns an error if the token is invalid or if there is an issue during validation.
-func ValidateSessionToken(ctx context.Context, token string) (claims *tokens.AuthPlatformClaims, err error) {
+func ValidateSessionToken(ctx context.Context, token string) (claims *tokens.NexeresClaims, err error) {
 	// Always pass a POINTER TO THE CLAIMS STRUCT to jwt.ParseWithClaims
 	// so that it can populate the claims with the parsed token data.
 	// Passing a struct value will give errors like "cannot unmarshal ... into Go value of type jwt.Claims"
 	// Since jwt.Claims is an interface, we need to use a pointer to a concrete type that implements it.
-	c := &tokens.AuthPlatformClaims{}
+	c := &tokens.NexeresClaims{}
 	parsedToken, err := jwt.ParseWithClaims(token, c, func(t *jwt.Token) (interface{}, error) {
 		if t.Method == jwt.SigningMethodRS256 {
 			return tokens.PublicKey, nil
@@ -138,7 +167,7 @@ func ValidateSessionToken(ctx context.Context, token string) (claims *tokens.Aut
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Method.Alg())
 		}
 	}, jwt.WithExpirationRequired(), jwt.WithIssuedAt(), jwt.WithLeeway(time.Minute*5))
-	if v, ok := parsedToken.Claims.(*tokens.AuthPlatformClaims); ok && parsedToken.Valid {
+	if v, ok := parsedToken.Claims.(*tokens.NexeresClaims); ok && parsedToken.Valid {
 		return v, nil
 	}
 	return nil, fmt.Errorf("invalid session token: %w", err)

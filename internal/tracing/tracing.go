@@ -7,9 +7,9 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/internal/logging"
-	"github.com/nbrglm/auth-platform/opts"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/internal/logging"
+	"github.com/nbrglm/nexeres/opts"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"

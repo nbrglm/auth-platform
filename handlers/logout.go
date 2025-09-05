@@ -5,12 +5,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"github.com/nbrglm/auth-platform/internal"
-	"github.com/nbrglm/auth-platform/internal/metrics"
-	"github.com/nbrglm/auth-platform/internal/middlewares"
-	"github.com/nbrglm/auth-platform/internal/models"
-	"github.com/nbrglm/auth-platform/internal/store"
-	"github.com/nbrglm/auth-platform/internal/tokens"
+	"github.com/nbrglm/nexeres/internal"
+	"github.com/nbrglm/nexeres/internal/metrics"
+	"github.com/nbrglm/nexeres/internal/middlewares"
+	"github.com/nbrglm/nexeres/internal/models"
+	"github.com/nbrglm/nexeres/internal/store"
+	"github.com/nbrglm/nexeres/internal/tokens"
+	"github.com/nbrglm/nexeres/utils"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,7 +23,7 @@ func NewLogoutHandler() *LogoutHandler {
 	return &LogoutHandler{
 		LogoutCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "nbrglm_auth_platform",
+				Namespace: "nexeres",
 				Subsystem: "auth",
 				Name:      "user_logout_requests",
 				Help:      "Total number of user logout requests",
@@ -48,8 +49,8 @@ type LogoutResult struct {
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param X-NAP-Session-Token header string false "Session token"
-// @Param X-NAP-Refresh-Token header string false "Refresh token"
+// @Param X-NEXERES-Session-Token header string false "Session token"
+// @Param X-NEXERES-Refresh-Token header string false "Refresh token"
 // @Success      200  {object}  LogoutResult "Logout result"
 // @Failure      400  {object}  models.ErrorResponse "Bad Request - Invalid or missing tokens"
 // @Failure      401  {object}  models.ErrorResponse "Unauthorized - Invalid or expired tokens"
@@ -66,7 +67,7 @@ func (h *LogoutHandler) HandleLogout(c *gin.Context) {
 
 	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction", http.StatusInternalServerError, err), span, log, h.LogoutCounter, "logout")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction", http.StatusInternalServerError, err), span, log, h.LogoutCounter, "logout")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -89,12 +90,12 @@ func (h *LogoutHandler) HandleLogout(c *gin.Context) {
 	}
 
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to revoke session", http.StatusInternalServerError, err), span, log, h.LogoutCounter, "logout")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to revoke session", http.StatusInternalServerError, err), span, log, h.LogoutCounter, "logout")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction", http.StatusInternalServerError, err), span, log, h.LogoutCounter, "logout")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction", http.StatusInternalServerError, err), span, log, h.LogoutCounter, "logout")
 		return
 	}
 

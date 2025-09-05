@@ -1,6 +1,6 @@
--- NBRGLM Auth Platform (NAP) - Migration Down
--- This file reverses the NAP schema by dropping all indexes, tables, and data.
--- Execute with caution - this will permanently delete all NAP data.
+-- Nexeres - Migration Down
+-- This file reverses the Nexeres schema by dropping all indexes, tables, and data.
+-- Execute with caution - this will permanently delete all Nexeres data.
 -- Drop composite indexes first
 DROP INDEX IF EXISTS idx_audit_logs_org_created;
 

@@ -1,5 +1,5 @@
--- NBRGLM Auth Platform (NAP) - Schema
--- This file contains the SQL schema for the NBRGLM Auth Platform (NAP).
+-- Nexeres - Schema
+-- This file contains the SQL schema for Nexeres.
 -- Works with PostgreSQL 17+.
 CREATE TABLE IF NOT EXISTS orgs (
   id UUID PRIMARY KEY NOT NULL,
@@ -15,12 +15,12 @@ CREATE TABLE IF NOT EXISTS orgs (
   deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
--- The domain is used to identify the org in the NBRGLM Auth Platform (NAP).
+-- The domain is used to identify the org in Nexeres.
 -- It is used for auto-joining users to the org based on their email address.
 -- The domain must be a valid email domain.
 CREATE TABLE IF NOT EXISTS org_domains (
   org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
-  -- The domain name, used to identify the org in the NBRGLM Auth Platform (NAP).
+  -- The domain name, used to identify the org in Nexeres.
   domain VARCHAR(512) NOT NULL UNIQUE,
   verified BOOLEAN NOT NULL DEFAULT FALSE,
   auto_join_enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -83,10 +83,10 @@ CREATE TABLE IF NOT EXISTS oauth_providers (
   id UUID PRIMARY KEY NOT NULL,
   org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
   -- One of, 'google', 'github', 'microsoft', 'apple', or the name of a custom OAuth provider.
-  -- This field is used to identify the provider in the NBRGLM Auth Platform (NAP).
+  -- This field is used to identify the provider in Nexeres.
   -- It must be unique across all providers for the org.
   -- Custom providers can be added by the org, but they must follow the same naming conventions.
-  -- Custom providers must be registered with the NBRGLM Auth Platform (NAP) before they can be used.
+  -- Custom providers must be registered with Nexeres before they can be used.
   provider VARCHAR(64) NOT NULL,
   -- The client ID of the OAuth provider, used to identify the application in the OAuth flow.
   client_id VARCHAR(512) NOT NULL,
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   id UUID PRIMARY KEY NOT NULL,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
-  -- The session token hash, used to authenticate the user in the NBRGLM Auth Platform (NAP).
+  -- The session token hash, used to authenticate the user in Nexeres.
   token_hash VARCHAR(512) UNIQUE NOT NULL,
   -- The refresh token hash corresponding to this session.
   refresh_token_hash VARCHAR(512) UNIQUE NOT NULL,
@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS verification_tokens (
 -- Scope table, for OIDC and API access.
 CREATE TABLE IF NOT EXISTS scopes (
   id UUID PRIMARY KEY NOT NULL,
-  -- The name of the scope, used to identify the scope in the NBRGLM Auth Platform (NAP).
+  -- The name of the scope, used to identify the scope in Nexeres.
   -- It must be unique across all scopes.
   -- Eg. 'drive:read', 'profile:read', etc.
   name VARCHAR(255) UNIQUE NOT NULL,
@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS scopes (
   -- A user-friendly description of the scope, used to display the scope in the UI.
   description TEXT,
   -- This scope is enabled by default for all users and orgs and apps can access it without explicit consent.
-  -- This is useful for scopes that are required for the basic functionality of the NBRGLM Auth Platform (NAP).
+  -- This is useful for scopes that are required for the basic functionality of Nexeres.
   -- For example, the 'profile:read' scope is enabled by default for all users and orgs.
   -- This includes scopes like 'openid' which are auto-granted to all clients.
   is_default BOOLEAN NOT NULL DEFAULT FALSE,
@@ -322,7 +322,7 @@ CREATE TABLE IF NOT EXISTS invitations (
     UNIQUE (org_id, email)
 );
 
--- Audit Log table for tracking changes in the NBRGLM Auth Platform (NAP).
+-- Audit Log table for tracking changes in Nexeres.
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY NOT NULL,
   org_id UUID NOT NULL REFERENCES orgs(id) ON DELETE CASCADE,
@@ -339,7 +339,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Essential indexes for NAP (NBRGLM Auth Platform) schema
+-- Essential indexes for Nexeres schema
 -- orgs
 CREATE INDEX idx_orgs_slug ON orgs(slug);
 

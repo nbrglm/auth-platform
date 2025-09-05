@@ -1,9 +1,10 @@
-module github.com/nbrglm/auth-platform
+module github.com/nbrglm/nexeres
 
 go 1.24.4
 
 ignore (
 	sdks
+	data
 )
 
 require (

@@ -1,5 +1,235 @@
 basePath: /
 definitions:
+  admin_handlers.AdminLoginData:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  admin_handlers.AdminLoginResult:
+    properties:
+      emailSent:
+        description: |-
+          If true, the email is an existing admin email and a verification code has been sent.
+          The user can then proceed to verify the code.
+        type: boolean
+      flowId:
+        description: The flow ID for the login process. This is required for verifying
+          the code.
+        type: string
+    type: object
+  admin_handlers.VerifyAdminLoginData:
+    properties:
+      code:
+        type: string
+      flowId:
+        type: string
+    required:
+    - code
+    - flowId
+    type: object
+  config.APIKeyConfig:
+    properties:
+      description:
+        description: Description of the key
+        type: string
+      name:
+        description: The name of the API Key
+        type: string
+    required:
+    - description
+    - name
+    type: object
+  config.AuditLogsConfig:
+    properties:
+      enable:
+        description: Enable or disable audit logs.
+        type: boolean
+    type: object
+  config.BrandingConfig:
+    properties:
+      appName:
+        description: AppName is the name of the application, used in various places
+          like email templates, UI, etc.
+        type: string
+      companyName:
+        description: CompanyName is the name of the company, used in emails, UI, etc.
+        type: string
+      companyNameShort:
+        description: CompanyNameShort is a short version of the company name, used
+          in places where space is limited.
+        type: string
+      supportURL:
+        description: SupportURL is the URL for support, used in emails, UI, etc.
+        type: string
+    required:
+    - appName
+    - companyName
+    - companyNameShort
+    - supportURL
+    type: object
+  config.CompleteConfig:
+    properties:
+      branding:
+        $ref: '#/definitions/config.BrandingConfig'
+      debug:
+        description: Debug mode for the application
+        type: boolean
+      jwt:
+        $ref: '#/definitions/config.JWTConfig'
+      multitenancy:
+        type: boolean
+      notifications:
+        $ref: '#/definitions/config.NotificationsConfig'
+      public:
+        $ref: '#/definitions/config.PublicConfig'
+      security:
+        $ref: '#/definitions/config.SecurityConfig'
+    required:
+    - branding
+    - jwt
+    - multitenancy
+    - notifications
+    - public
+    - security
+    type: object
+  config.EmailEndpointsConfig:
+    properties:
+      passwordReset:
+        description: |-
+          PasswordReset is the endpoint for the password reset link.
+          A `token` parameter will be passed to this URL.
+          Pass a full url, eg. https://auth.example.com/password-reset
+        type: string
+      verificationEmail:
+        description: |-
+          VerificationEmail is the endpoint for the email verification link.
+          A `token` parameter will be passed to this URL.
+          Pass a full url, eg. https://auth.example.com/verify-email
+        type: string
+    required:
+    - passwordReset
+    - verificationEmail
+    type: object
+  config.EmailNotificationConfig:
+    properties:
+      endpoints:
+        allOf:
+        - $ref: '#/definitions/config.EmailEndpointsConfig'
+        description: Endpoints holds the configuration for URLs inside emails.
+      provider:
+        description: Provider is the email provider to use for sending emails.
+        enum:
+        - ses
+        - sendgrid
+        - smtp
+        type: string
+    required:
+    - endpoints
+    - provider
+    type: object
+  config.JWTConfig:
+    properties:
+      refreshTokenExpiration:
+        description: 'Refresh token expiration time in seconds (default: 30d, 2592000)'
+        minimum: 86400
+        type: integer
+      sessionTokenExpiration:
+        description: 'Session token expiration time in seconds (default: 1hr, 3600)'
+        minimum: 60
+        type: integer
+    required:
+    - refreshTokenExpiration
+    - sessionTokenExpiration
+    type: object
+  config.NotificationsConfig:
+    properties:
+      email:
+        allOf:
+        - $ref: '#/definitions/config.EmailNotificationConfig'
+        description: Email configuration for sending notifications
+      sms:
+        allOf:
+        - $ref: '#/definitions/config.SMSNotificationConfig'
+        description: SMS Configuration for sending notifications
+    required:
+    - email
+    type: object
+  config.PublicConfig:
+    properties:
+      debugBaseURL:
+        type: string
+      domain:
+        description: |-
+          Domain is the domain at which Nexeres UI is being hosted.
+
+          Eg. if hosting Nexeres at auth.example.com, provide "example.com" here.
+
+          This setting is used as the Domain for all Cookies (except Refresh Token Cookie, that is only set at "subdomain.domain")
+        type: string
+      scheme:
+        description: |-
+          Scheme for public URLs (http/https)
+
+          Use "https" even if TLS termination is handled by reverse proxy
+        enum:
+        - http
+        - https
+        type: string
+      subDomain:
+        description: |-
+          Subdomain at which Nexeres UI is being hosted.
+
+          Eg. If hosting Nexeres at auth.example.com, provide "auth" here.
+        type: string
+    required:
+    - domain
+    - scheme
+    - subDomain
+    type: object
+  config.RateLimitConfig:
+    properties:
+      rate:
+        description: |-
+          Rate limit for API requests.
+          Format: "R-U", where R is requests and U is the time unit (s - per second, m - per minute, h - per hour, d - per day)
+        type: string
+    required:
+    - rate
+    type: object
+  config.SMSNotificationConfig:
+    properties:
+      provider:
+        description: 'TODO: Implement SMSNotificationConfig'
+        enum:
+        - twilio
+        type: string
+    required:
+    - provider
+    type: object
+  config.SecurityConfig:
+    properties:
+      apiKeys:
+        description: |-
+          The list of API Keys which are allowed to access the API endpoints.
+          Requests without an API key, or with a key not specified here, will be denied with 401.
+        items:
+          $ref: '#/definitions/config.APIKeyConfig'
+        type: array
+      auditLogs:
+        allOf:
+        - $ref: '#/definitions/config.AuditLogsConfig'
+        description: Enable or disable audit logs.
+      rateLimit:
+        allOf:
+        - $ref: '#/definitions/config.RateLimitConfig'
+        description: Rate limiting configuration.
+    required:
+    - apiKeys
+    - auditLogs
+    - rateLimit
+    type: object
   handlers.LogoutResult:
     properties:
       message:
@@ -35,9 +265,6 @@ definitions:
       expiresAt:
         type: string
       id:
-        type: string
-      inviteToken:
-        description: For Invite Flow
         type: string
       mfaRequired:
         type: boolean
@@ -136,10 +363,6 @@ definitions:
     type: object
   models.ErrorResponse:
     properties:
-      code:
-        description: Code is an error code that can be used for programmatic handling
-          of errors.
-        type: integer
       debug:
         description: DebugMessage is a technical message that can be used for debugging.
         type: string
@@ -172,20 +395,20 @@ definitions:
     type: object
   tokens.Tokens:
     properties:
-      refresh_token:
+      refreshToken:
         description: |-
           RefreshToken is the generated refresh token.
 
           This is base64.RawURLEncoding encoded.
           DO NOT DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.
         type: string
-      refresh_token_expiry:
+      refreshTokenExpiry:
         description: RefreshTokenExpiry is the expiration time of the refresh token.
         type: string
-      session_id:
+      sessionId:
         description: SessionId is the unique identifier for the session.
         type: string
-      session_token:
+      sessionToken:
         description: |-
           SessionToken is the generated session token.
 
@@ -194,27 +417,116 @@ definitions:
           DO NOT USE IT AS IS. VALIDATION WILL FAIL WITHOUT DECODING.
           ONLY WHEN DECODED, YOU SHOULD PASS IT TO THE THINGS THAT REQUIRE THE SESSION TOKEN.
         type: string
-      session_token_expiry:
+      sessionTokenExpiry:
         description: SessionTokenExpiry is the expiration time of the session token.
         type: string
     type: object
 externalDocs:
-  description: NBRGLM Auth Platform Documentation
-  url: https://nbrglm.com/auth-platform/docs
+  description: NBRGLM Nexeres Documentation
+  url: https://nbrglm.com/nexeres/docs
 host: localhost:3360
 info:
   contact:
     email: contact@nbrglm.com
     name: NBRGLM Support
     url: https://nbrglm.com/support
-  description: This is the NBRGLM Auth Platform API documentation.
+  description: This is the NBRGLM Nexeres API Spec documentation.
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: https://nbrglm.com/auth-platform/terms
-  title: NBRGLM Auth Platform
-  version: 0.1.0
+  termsOfService: https://nbrglm.com/nexeres/terms
+  title: NBRGLM Nexeres API Spec
+  version: 0.0.1
 paths:
+  /api/admin/config:
+    get:
+      description: Retrieves the current configuration of the application.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Current configuration
+          schema:
+            $ref: '#/definitions/config.CompleteConfig'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get current configuration
+      tags:
+      - Admin
+  /api/admin/login:
+    post:
+      consumes:
+      - application/json
+      description: Sends a login code to the admin's email if it exists
+      parameters:
+      - description: Admin login data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/admin_handlers.AdminLoginData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Admin Login Result
+          schema:
+            $ref: '#/definitions/admin_handlers.AdminLoginResult'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Admin login
+      tags:
+      - admin
+  /api/admin/login/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the admin login using the code sent to email
+      parameters:
+      - description: Verify admin login data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/admin_handlers.VerifyAdminLoginData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verify Admin Login Result
+          schema:
+            type: string
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Verify admin login
+      tags:
+      - admin
   /api/auth/flow/{flowId}:
     get:
       consumes:
@@ -268,14 +580,10 @@ paths:
           schema:
             $ref: '#/definitions/models.ErrorResponse'
         "401":
-          description: Unauthorized
+          description: Unauthorized - Invalid Credentials or User does not belong
+            to any organization
           schema:
             $ref: '#/definitions/models.ErrorResponse'
-        "403":
-          description: Forbidden - Email Not Verified OR User does not belong to any
-            organization
-          schema:
-            $ref: '#/definitions/handlers.UserLoginResult'
         "500":
           description: Internal Server Error
           schema:
@@ -292,11 +600,11 @@ paths:
       parameters:
       - description: Session token
         in: header
-        name: X-NAP-Session-Token
+        name: X-NEXERES-Session-Token
         type: string
       - description: Refresh token
         in: header
-        name: X-NAP-Refresh-Token
+        name: X-NEXERES-Refresh-Token
         type: string
       produces:
       - application/json
@@ -328,7 +636,7 @@ paths:
       parameters:
       - description: Refresh token
         in: header
-        name: X-NAP-Refresh-Token
+        name: X-NEXERES-Refresh-Token
         required: true
         type: string
       produces:
@@ -451,14 +759,18 @@ paths:
 securityDefinitions:
   APIKeyAuth:
     in: header
-    name: X-NAP-API-Key
+    name: X-NEXERES-API-Key
+    type: apiKey
+  AdminHeaderAuth:
+    in: header
+    name: X-NEXERES-Admin-Token
     type: apiKey
   RefreshHeaderAuth:
     in: header
-    name: X-NAP-Refresh-Token
+    name: X-NEXERES-Refresh-Token
     type: apiKey
   SessionHeaderAuth:
     in: header
-    name: X-NAP-Session-Token
+    name: X-NEXERES-Session-Token
     type: apiKey
 swagger: "2.0"

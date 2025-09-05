@@ -1,65 +1,64 @@
 services:
-  nap-db:
+  nexeres-db:
     image: postgres:17
-    container_name: nap-db
-    hostname: nap-db
+    container_name: nexeres-db
+    hostname: nexeres-db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: auth_platform
+      POSTGRES_DB: nexeres
     volumes:
-      - ./.data/nap-data:/var/lib/postgresql/data
+      - ./data/nexeres-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
-  
-  nap-pgadmin:
+
+  nexeres-pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: nap-pgadmin
-    hostname: nap-pgadmin
+    container_name: nexeres-pgadmin
+    hostname: nexeres-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
     volumes:
-      - ./.data/nap-pgadmin-data:/var/lib/pgadmin
-    
-  nap-mailpit:
+      - ./data/nexeres-pgadmin-data:/var/lib/pgadmin
+
+  nexeres-mailpit:
     image: axllent/mailpit
-    container_name: nap-mailpit
-    hostname: nap-mailpit
+    container_name: nexeres-mailpit
+    hostname: nexeres-mailpit
     ports:
       - "8025:8025"
       - "1025:1025"
     volumes:
-      - ./.data/nap-mailpit-data:/data
+      - ./data/nexeres-mailpit-data:/data
     environment:
       MP_MAX_MESSAGES: 5000
-      MP_DATABASE: /.data/mailpit.db
+      MP_DATABASE: /data/mailpit.db
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
-  
-  nap-redis:
+
+  nexeres-redis:
     image: redis:8
-    container_name: nap-redis
-    hostname: nap-redis
+    container_name: nexeres-redis
+    hostname: nexeres-redis
     ports:
       - "6379:6379"
     volumes:
-      - ./.data/nap-redis-data:/data
-    command: redis-server --requirepass nap-redis-password --appendonly yes
-  
+      - ./data/nexeres-redis-data:/data
+    command: redis-server --requirepass nexeres-redis-password --appendonly yes
 
-  nap-minio:
+  nexeres-minio:
     image: quay.io/minio/minio:latest
-    container_name: nap-minio
-    hostname: nap-minio
+    container_name: nexeres-minio
+    hostname: nexeres-minio
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - ./.data/nap-minio-data:/data
+      - ./data/nexeres-minio-data:/data
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio-admin

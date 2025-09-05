@@ -3,8 +3,8 @@ package internal
 import (
 	"context"
 
-	"github.com/nbrglm/auth-platform/internal/logging"
-	"github.com/nbrglm/auth-platform/internal/tracing"
+	"github.com/nbrglm/nexeres/internal/logging"
+	"github.com/nbrglm/nexeres/internal/tracing"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )

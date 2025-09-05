@@ -1,20 +1,22 @@
-# Toggle debug mode, used for development of this auth platform.
+# Toggle debug mode, used for development of this Nexeres.
 debug: true
 
-# List of admin users for the auth platform.
+# Admin configuration for Nexeres.
 admins:
-  - email: admin@example.com
-    # Bcrypt password hash only (this is hash for "password").
-    passwordHash: $2a$10$eImiTMZG4Tn0y1N9O8e5uO3b6z5Z5j7f5Z5j7f5Z5j7f5Z5j7f5Z5j7
+  emails:
+    - admin@example.com
+  # Session timeout for admin sessions in seconds. Minimum is 300 (5 minutes).
+  # Default is 900 (15 minutes).
+  sessionTimeout: 900
 
 # Configure the multitenancy feature.
 # This feature is not enabled by default.
-# When enabled, it allows the auth platform to handle multiple tenants.
+# When enabled, it allows Nexeres to handle multiple tenants.
 # Each tenant can have its own configuration, users, and settings.
 # Note: This feature is experimental and may not be fully stable.
 multitenancy: false
 
-# Configure notifications for the auth platform.
+# Configure notifications for Nexeres.
 # Currently, only email notifications are supported.
 notifications:
   # Configure email notifications.
@@ -30,10 +32,14 @@ notifications:
       fromAddress: no-reply@example.com
       # Password for the SMTP server.
       password: "abcd1234"
+    # Endpoints for the various emails
+    endpoints:
+      verificationEmail: http://localhost:5173/auth/verify-email/verify
+      passwordReset: http://localhost:5173/auth/password-reset
 
-# Configure public settings such as redirects, debug URLs, etc. for the auth platform.
+# Configure public settings such as redirects, debug URLs, etc. for Nexeres.
 public:
-  # The domain at which the auth platform is hosted.
+  # The domain at which Nexeres is hosted.
   # Eg. hosting at "auth.example.com", then this should be "example.com"
   domain: localhost
 
@@ -41,19 +47,14 @@ public:
   # Use https even if TLS termination is done at a reverse proxy.
   scheme: http
 
-  # SubDomain at which NAP is being hosted.
+  # SubDomain at which Nexeres is being hosted.
   # Eg. hosting at "auth.example.com", then this should be "auth"
   subdomain: auth
 
   # DebugBaseURL is used for debugging purposes.
   debugBaseURL: http://localhost:3360
 
-  # Redirects for public URLs.
-  redirects:
-    domains:
-      - nbrglm.com
-
-# Configure the server settings for the auth platform.
+# Configure the server settings for Nexeres.
 server:
   # The host on which the server will listen.
   host: "0.0.0.0"
@@ -64,7 +65,7 @@ server:
   # The instance ID for the server.
   instanceID: default-instance
 
-# Observability configuration for the auth platform.
+# Observability configuration for Nexeres.
 observability:
   # The endpoint for the OpenTelemetry exporter.
   # Logs, Traces both are exported to this endpoint.
@@ -79,16 +80,16 @@ observability:
   # One of debug info warn error dpanic panic fatal.
   logLevel: debug
 
-# The configuration for different stores (storages) required by the auth platform.
+# The configuration for different stores (storages) required by Nexeres.
 stores:
-  # The database to store the auth platform data.
+  # The database to store Nexeres data.
   postgres:
     # The Data Source Name (DSN) for the PostgreSQL database.
     # Format: postgres://username:password@host:port/database_name
     #
     # For connection pooling arguments, take a look at:
     # https://pkg.go.dev/github.com/jackc/pgx/v5@v5.7.5/pgxpool#ParseConfig
-    dsn: postgres://postgres:postgres@localhost:5433/auth_platform
+    dsn: postgres://postgres:postgres@localhost:5433/nexeres
 
   # The Redis store for caching, rate-limiting, flows, etc.
   redis:
@@ -99,12 +100,12 @@ stores:
     db: 0
 
     # The password for the Redis server. (Optional)
-    password: nap-redis-password
+    password: nexeres-redis-password
 
   # The S3 store for storing files, images, etc.
   # Any s3 compatible store can be used, for more information about what operations
   # are used, take a look at:
-  # https://docs.nbrglm.com/auth-platform/stores/s3/operations
+  # https://docs.nbrglm.com/nexeres/stores/s3/operations
   s3:
     # The endpoint of the S3 store.
     endpoint: localhost:9000
@@ -123,10 +124,11 @@ stores:
     # Default is false.
     useSSL: false
 
-# Security configuration for the auth platform.
+# Security configuration for Nexeres.
 security:
   # Enable or disable audit logs. (Default false)
-  enableAuditLogs: false
+  auditLogs:
+    enable: false
 
   # The list of API Keys which are allowed to access the API endpoints.
   #
@@ -136,30 +138,30 @@ security:
     - name: "Production App Key"
 
       # Description of the key
-      description: "This key is used by the production app to access the auth-platform."
+      description: "This key is used by the production app to access Nexeres."
 
       # The key itself. No restriction on the length, but keep it sensible please.
-      # Recommended format: nap_[environment:oneof=live,test,dev,staging]_[random alphanumeric string]
-      key: "nap_live_9z8y7x6w5v4u3t2s1r0q"
+      # Recommended format: nexeres_[environment:oneof=live,test,dev,staging]_[random alphanumeric string]
+      key: "nexeres_live_9z8y7x6w5v4u3t2s1r0q"
 
     # Can specify multiple keys too.
     - name: "Dev Key"
-      description: "This key is used by the development app to access the auth-platform."
-      key: "nap_dev_9z8y7x6w5v4u3t2s1r0q"
+      description: "This key is used by the development app to access Nexeres."
+      key: "nexeres_dev_9z8y7x6w5v4u3t2s1r0q"
 
   # Cookie security settings.
   cookie:
     # The signing key file for the cookies.
     # This is used to sign the cookies to prevent tampering.
-    signingKeyFile: $NBRGLM_HOME/workspace/AuthPlatform/auth-platform/run/cookie-signing-key
+    signingKeyFile: $NBRGLM_HOME/workspace/AuthPlatform/nexeres/run/cookie-signing-key
 
   # CSRF security settings.
   csrf:
     # The secret file for CSRF protection.
-    secretFile: $NBRGLM_HOME/workspace/AuthPlatform/auth-platform/run/csrf-secret
+    secretFile: $NBRGLM_HOME/workspace/AuthPlatform/nexeres/run/csrf-secret
 
-    # The csrf token name in the form fields. (Default: nap-csrf-tk)
-    tokenName: nap-csrf-tk
+    # The csrf token name in the form fields. (Default: nexeres-csrf-tk)
+    tokenName: nexeres-csrf-tk
 
     # The csrf token header name. (Default X-CSRF-Token)
     # If you change this, you need to allow the header in CORS config.
@@ -170,7 +172,7 @@ security:
     # Configure the rate limiting for API endpoints.
     rate: 120-s
 
-  # CORS settings for the auth platform.
+  # CORS settings for Nexeres.
   cors:
     # Allowed origins for CORS requests.
     # Note: Using "*" WILL NOT work.
@@ -211,21 +213,21 @@ security:
     # - Accept
     # - Origin
     # - User-Agent
-    # - X-NAP-Refresh-Token
+    # - X-NEXERES-Refresh-Token
     # - X-CSRF-Token
-    # - X-NAP-API-Key
+    # - X-NEXERES-API-Key
     #
     # You can add to the list by adding headers here.
     # allowedHeaders:
     #   - "X-Some-Header"
 
-# JWT configuration for the auth platform.
+# JWT configuration for Nexeres.
 jwt:
   # The private key file for signing the JWT tokens. (RS256 algorithm)
-  privateKeyFile: $NBRGLM_HOME/workspace/AuthPlatform/auth-platform/run/keys/private.pem
+  privateKeyFile: $NBRGLM_HOME/workspace/AuthPlatform/nexeres/run/keys/private.pem
 
   # The public key file for verifying the JWT tokens. (RS256 algorithm)
-  publicKeyFile: $NBRGLM_HOME/workspace/AuthPlatform/auth-platform/run/keys/public.pem
+  publicKeyFile: $NBRGLM_HOME/workspace/AuthPlatform/nexeres/run/keys/public.pem
 
   # Session token expiration time in seconds (default: 1hr, 3600).
   sessionTokenExpiration: 3600
@@ -242,7 +244,7 @@ jwt:
   # audiences:
   #   - https://some-other-app.example.com
 
-# Branding configuration for the auth platform.
+# Branding configuration for Nexeres.
 branding:
   # The name of the application.
   appName: NBRGLM Accounts
@@ -255,15 +257,3 @@ branding:
 
   # The support URL for the application.
   supportURL: https://support.nbrglm.com
-
-  # The path to the logo file for the application.
-  logoFile: $NBRGLM_HOME/workspace/AuthPlatform/auth-platform/run/images/logo.png
-
-  # The path to the logo file for the application in dark mode.
-  logoDarkFile: $NBRGLM_HOME/workspace/AuthPlatform/auth-platform/run/images/logo.png
-
-  # The path to favicon file for the application.
-  faviconFile: $NBRGLM_HOME/workspace/AuthPlatform/auth-platform/run/images/favicon.png
-# If in case, you require to remove the nbrglm branding from the auth platform UI,
-# you can set this to false.
-# nbrglmBranding: false

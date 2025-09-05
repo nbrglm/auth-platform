@@ -1,0 +1,92 @@
+{{define "VerifyEmailHTML"}}
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+  <title>Verify Your Email for {{.AppName}}</title>
+  <style>
+    a:link {
+      color: #888;
+    }
+
+    a:visited {
+      color: #888;
+    }
+
+    a:hover {
+      color: #AAA;
+    }
+  </style>
+</head>
+
+<body
+  style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8f9fa;"
+>
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+      <h1 style="color: #333; margin: 0 0 24px 0; font-size: 28px; font-weight: 600;">Welcome to {{.AppName}}!</h1>
+
+      <p style="color: #666; font-size: 16px; line-height: 1.5; margin: 0 0 24px 0;">
+        Hello {{.UserName}},
+      </p>
+
+      <p style="color: #666; font-size: 16px; line-height: 1.5; margin: 0 0 32px 0;">
+        Thanks for signing up! Please verify your email address to complete your account setup.
+      </p>
+
+      <div style="text-align: center; margin: 32px 0;">
+        <a
+          href="{{.ActionURL}}"
+          style="display: inline-block; background-color: #306dd6; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 500; font-size: 16px;"
+        >
+          Verify Email Address
+        </a>
+      </div>
+
+      <p style="color: #888; font-size: 14px; line-height: 1.5; margin: 24px 0 0 0;">
+        If the button above doesn't work, you can copy and paste the following link into your browser:
+        <br>
+        <a
+          href="{{.ActionURL}}"
+          style="color: #306dd6; text-decoration: none;"
+        >{{.ActionURL}}</a>
+      </p>
+
+      <p style="color: #888; font-size: 14px; line-height: 1.5; margin: 24px 0 0 0;">
+        Please note that this link will expire at {{.ExpiresAt.Format "Jan 2, 2006 at 3:04 PM"}}. If you didn't create
+        this account, please ignore this email.
+        <br>
+        Need help? Contact us at <a
+          href="{{.SupportURL}}"
+          style="color: #306dd6; text-decoration: none;"
+        >{{.SupportURL}}</a>.
+      </p>
+
+      <p style="color: #888; font-size: 14px; line-height: 1.5; margin: 24px 0 0 0; font-weight: bold;">
+        Best Regards, <br>
+        The {{.AppName}} Team
+      </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <p style="color: #888; font-size: 14px; margin: 0;">
+        © {{.ExpiresAt.Format "2006"}} {{.CompanyName}}. All rights reserved.
+      </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px; text-decoration-color: #888;">
+      <a href="https://docs.nbrglm.com/nexeres">
+        <p style="color: #888; font-size: 14px; margin: 0;">
+          Secured by Nexeres</p>
+      </a>
+    </div>
+  </div>
+</body>
+
+</html>
+{{end}}

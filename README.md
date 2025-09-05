@@ -1,6 +1,6 @@
-# NAP – NBRGLM Auth Platform
+# Nexeres - By NBRGLM
 
-**NAP (NBRGLM Auth Platform)** is a self-hostable, multi-tenant authentication platform offering secure session management, tenant isolation, and a customizable UI — all without any paywalls or vendor lock-in.
+**Nexeres** is a self-hostable, multi-tenant authentication platform offering secure session management, tenant isolation, and a customizable UI — all without any paywalls or vendor lock-in.
 
 Built to be simple to use, easy to deploy, and flexible for both startups and individual developers who want full control over their authentication system.
 
@@ -22,9 +22,9 @@ Built to be simple to use, easy to deploy, and flexible for both startups and in
 
 Official documentation is a work in progress, available at: **https://docs.nbrglm.com**
 
-## Why NAP?
+## Why Nexeres?
 
-Most authentication solutions today are either closed-source, expensive, or unnecessarily complex. NAP was built to offer:
+Most authentication solutions today are either closed-source, expensive, or unnecessarily complex. Nexeres was built to offer:
 
 - A **fully self-hostable**, production-ready auth platform  
 - No paywalls, no feature gates — just clean APIs and UI  
@@ -45,13 +45,13 @@ Most authentication solutions today are either closed-source, expensive, or unne
 
 **Currently:** Docker Compose
 
-You can run NAP locally using Docker Compose. While Kubernetes support is coming via Helm, it's adaptable manually if needed. Running the Go binary directly is not recommended for production.
+You can run Nexeres locally using Docker Compose. While Kubernetes support is coming via Helm, it's adaptable manually if needed. Running the Go binary directly is not recommended for production.
 
 ```bash
 # Optional: clone into a dedicated folder
 mkdir -p "$HOME/NBRGLM" && cd "$HOME/NBRGLM"
-git clone https://github.com/nbrglm/auth-platform.git
-cd auth-platform
+git clone https://github.com/nbrglm/nexeres.git
+cd nexeres
 
 # Start with Docker Compose
 docker-compose up -d

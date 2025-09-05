@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/opts"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/opts"
 )
 
 func InitCORS(engine *gin.Engine) {

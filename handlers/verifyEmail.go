@@ -9,13 +9,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/nbrglm/auth-platform/db"
-	"github.com/nbrglm/auth-platform/internal"
-	"github.com/nbrglm/auth-platform/internal/metrics"
-	"github.com/nbrglm/auth-platform/internal/models"
-	"github.com/nbrglm/auth-platform/internal/notifications"
-	"github.com/nbrglm/auth-platform/internal/store"
-	"github.com/nbrglm/auth-platform/internal/tokens"
+	"github.com/nbrglm/nexeres/db"
+	"github.com/nbrglm/nexeres/internal"
+	"github.com/nbrglm/nexeres/internal/metrics"
+	"github.com/nbrglm/nexeres/internal/models"
+	"github.com/nbrglm/nexeres/internal/notifications"
+	"github.com/nbrglm/nexeres/internal/store"
+	"github.com/nbrglm/nexeres/internal/tokens"
+	"github.com/nbrglm/nexeres/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
@@ -29,7 +30,7 @@ func NewVerifyEmailHandler() *VerifyEmailHandler {
 	return &VerifyEmailHandler{
 		SendEmailCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "nbrglm_auth_platform",
+				Namespace: "nexeres",
 				Subsystem: "auth",
 				Name:      "verify_email_send_requests",
 				Help:      "Total number of requests to send verification email",
@@ -38,7 +39,7 @@ func NewVerifyEmailHandler() *VerifyEmailHandler {
 		),
 		VerifyEmailCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "nbrglm_auth_platform",
+				Namespace: "nexeres",
 				Subsystem: "auth",
 				Name:      "verify_email_requests",
 				Help:      "Total number of requests to verify email with token",
@@ -84,13 +85,13 @@ func (h *VerifyEmailHandler) HandleSendVerificationEmail(c *gin.Context) {
 
 	var input SendVerificationEmailData
 	if err := c.ShouldBindJSON(&input); err != nil {
-		ProcessError(c, models.NewErrorResponse("Invalid request data. Please check your input and try again.", "Failed to bind JSON!", http.StatusBadRequest, nil), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid request data. Please check your input and try again.", "Failed to bind JSON!", http.StatusBadRequest, nil), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
 	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -100,30 +101,30 @@ func (h *VerifyEmailHandler) HandleSendVerificationEmail(c *gin.Context) {
 	// Check if the user exists
 	user, err := q.GetUserByEmail(ctx, input.Email)
 	if errors.Is(err, pgx.ErrNoRows) {
-		ProcessError(c, models.NewErrorResponse("It seems the user with the provided email does not exist! Please check the email and try again.", "No user exists with the provided email address.", http.StatusBadRequest, nil), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse("It seems the user with the provided email does not exist! Please check the email and try again.", "No user exists with the provided email address.", http.StatusBadRequest, nil), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve user information!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve user information!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
 	if user.EmailVerified {
-		ProcessError(c, models.NewErrorResponse("The email is already verified!", "Email already verified!", http.StatusBadRequest, nil), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse("The email is already verified!", "Email already verified!", http.StatusBadRequest, nil), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
 	// Generate a verification token
 	token, hash, err := tokens.GenerateEmailVerificationToken()
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate verification token!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate verification token!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
 	// Generate the token ID
 	tokenId, err := uuid.NewV7()
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate token ID!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate token ID!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
@@ -139,13 +140,13 @@ func (h *VerifyEmailHandler) HandleSendVerificationEmail(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to insert verification token into the database!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to insert verification token into the database!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
 	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *VerifyEmailHandler) HandleSendVerificationEmail(c *gin.Context) {
 		VerificationToken: token,
 		ExpiresAt:         newToken.ExpiresAt.Time,
 	}); err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to send verification email!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to send verification email!", http.StatusInternalServerError, err), span, log, h.SendEmailCounter, "send_verification_email")
 		return
 	}
 
@@ -202,13 +203,13 @@ func (h *VerifyEmailHandler) HandleVerifyEmailToken(c *gin.Context) {
 
 	var input VerifyEmailTokenData
 	if err := c.ShouldBindJSON(&input); err != nil {
-		ProcessError(c, models.NewErrorResponse("Invalid request data. Please check your input and try again.", "Failed to bind JSON!", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid request data. Please check your input and try again.", "Failed to bind JSON!", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 
 	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -221,30 +222,30 @@ func (h *VerifyEmailHandler) HandleVerifyEmailToken(c *gin.Context) {
 	// Fetch the verification token from the database
 	token, err := q.GetVerificationTokenByHash(ctx, hash)
 	if errors.Is(err, pgx.ErrNoRows) {
-		ProcessError(c, models.NewErrorResponse("Invalid token! Please check the token and try again.", "No verification token found with the provided token hash.", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid token! Please check the token and try again.", "No verification token found with the provided token hash.", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve verification token!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve verification token!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 	if token.Type != string(tokens.EmailVerificationToken) {
-		ProcessError(c, models.NewErrorResponse("Invalid token! Please check the token and try again.", "The provided token is not a valid email verification token.", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid token! Please check the token and try again.", "The provided token is not a valid email verification token.", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 	if !token.ExpiresAt.Valid || token.ExpiresAt.Time.Before(time.Now()) {
-		ProcessError(c, models.NewErrorResponse("The token has expired! Please request a new verification email.", "The provided token has expired.", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse("The token has expired! Please request a new verification email.", "The provided token has expired.", http.StatusBadRequest, nil), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 
 	// Mark the user's email as verified, since a valid token was found
 	err = q.MarkUserEmailVerified(ctx, token.UserID)
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to mark user email as verified!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to mark user email as verified!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.VerifyEmailCounter, "verify_email_token")
 		return
 	}
 	log.Debug("Email verified successfully", zap.String("userID", token.UserID.String()))

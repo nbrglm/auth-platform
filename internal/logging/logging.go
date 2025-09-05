@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/opts"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/opts"
 	"go.opentelemetry.io/contrib/bridges/otelzap"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"

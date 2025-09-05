@@ -6,14 +6,16 @@ package templates
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"html/template"
+	"path"
 	"strings"
 	"time"
 
-	"github.com/nbrglm/auth-platform/config"
+	"github.com/nbrglm/nexeres/config"
 )
 
-//go:embed data
+//go:embed templs
 var templateFs embed.FS
 
 type TemplateData struct {
@@ -27,11 +29,6 @@ type TemplateData struct {
 	Location    string
 	SupportURL  string
 	CompanyName string
-
-	// NBRGLMBranding is a flag to indicate whether the email should include NBRGLM branding.
-	//
-	// Usually set to config.NBRGLMBranding, which is a boolean value indicating whether to include NBRGLM branding.
-	NBRGLMBranding bool
 }
 
 // EmailTemplate represents the structure of an email template.
@@ -68,12 +65,17 @@ type MessageTemplate struct {
 var (
 	// VerifyEmailTemplate is the template used for verifying email addresses.
 	VerifyEmailTemplate *EmailTemplate
+	AdminLoginTemplate  *EmailTemplate
 )
 
 // Must be called to parse all email templates at application startup.
 // This function initializes the email templates used for notifications.
 func ParseEmailTemplates() (err error) {
 	VerifyEmailTemplate, err = newVerifyEmailTemplate()
+	if err != nil {
+		return err
+	}
+	AdminLoginTemplate, err = newAdminLoginTemplate()
 	if err != nil {
 		return err
 	}
@@ -93,14 +95,18 @@ func ParseMessageTemplates() (err error) {
 // If the rendering fails, it returns an error and the original template.
 func RenderEmailTemplate(data TemplateData, tmpl EmailTemplate) (*RenderedEmailTemplate, error) {
 	var htmlBody, plainTextBody, subject bytes.Buffer
-	data.NBRGLMBranding = config.NBRGLMBranding // Ensure NBRGLMBranding is set based on the configuration
-	if err := tmpl.HTMLBody.ExecuteTemplate(&htmlBody, "VerifyEmailHTML", data); err != nil {
+
+	htmlTmplName := fmt.Sprintf("%sHTML", tmpl.TemplateName)
+	plainTextTmplName := fmt.Sprintf("%sText", tmpl.TemplateName)
+	subjectTmplName := fmt.Sprintf("%sSubject", tmpl.TemplateName)
+
+	if err := tmpl.HTMLBody.ExecuteTemplate(&htmlBody, htmlTmplName, data); err != nil {
 		return nil, err
 	}
-	if err := tmpl.PlainTextBody.ExecuteTemplate(&plainTextBody, "VerifyEmailText", data); err != nil {
+	if err := tmpl.PlainTextBody.ExecuteTemplate(&plainTextBody, plainTextTmplName, data); err != nil {
 		return nil, err
 	}
-	if err := tmpl.Subject.ExecuteTemplate(&subject, "VerifyEmailSubject", data); err != nil {
+	if err := tmpl.Subject.ExecuteTemplate(&subject, subjectTmplName, data); err != nil {
 		return nil, err
 	}
 	return &RenderedEmailTemplate{
@@ -109,4 +115,36 @@ func RenderEmailTemplate(data TemplateData, tmpl EmailTemplate) (*RenderedEmailT
 		HTMLBody:      strings.TrimSpace(htmlBody.String()),
 		PlainTextBody: strings.TrimSpace(plainTextBody.String()),
 	}, nil
+}
+
+// findAndParseTemplates is a utility function that searches for a template file in the embedded filesystem or a specified directory in the config.
+func findAndParseTemplates(htmlTmplSubPath, plainTextTmplSubPath, subjectTmplSubPath string) (subjectTemplate, htmlTemplate, plainTextTemplate *template.Template, err error) {
+	if config.Notifications.Email.TemplatesDir != nil {
+		htmlTemplate, err = template.ParseFiles(path.Join(*config.Notifications.Email.TemplatesDir, htmlTmplSubPath))
+		if err != nil {
+			return
+		}
+		plainTextTemplate, err = template.ParseFiles(path.Join(*config.Notifications.Email.TemplatesDir, plainTextTmplSubPath))
+		if err != nil {
+			return
+		}
+		subjectTemplate, err = template.ParseFiles(path.Join(*config.Notifications.Email.TemplatesDir, subjectTmplSubPath))
+		if err != nil {
+			return
+		}
+	} else {
+		subjectTemplate, err = template.ParseFS(templateFs, subjectTmplSubPath)
+		if err != nil {
+			return
+		}
+		htmlTemplate, err = template.ParseFS(templateFs, htmlTmplSubPath)
+		if err != nil {
+			return
+		}
+		plainTextTemplate, err = template.ParseFS(templateFs, plainTextTmplSubPath)
+		if err != nil {
+			return
+		}
+	}
+	return subjectTemplate, htmlTemplate, plainTextTemplate, nil
 }

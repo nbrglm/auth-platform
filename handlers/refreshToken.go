@@ -7,13 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/nbrglm/auth-platform/db"
-	"github.com/nbrglm/auth-platform/internal"
-	"github.com/nbrglm/auth-platform/internal/metrics"
-	"github.com/nbrglm/auth-platform/internal/middlewares"
-	"github.com/nbrglm/auth-platform/internal/models"
-	"github.com/nbrglm/auth-platform/internal/store"
-	"github.com/nbrglm/auth-platform/internal/tokens"
+	"github.com/nbrglm/nexeres/db"
+	"github.com/nbrglm/nexeres/internal"
+	"github.com/nbrglm/nexeres/internal/metrics"
+	"github.com/nbrglm/nexeres/internal/middlewares"
+	"github.com/nbrglm/nexeres/internal/models"
+	"github.com/nbrglm/nexeres/internal/store"
+	"github.com/nbrglm/nexeres/internal/tokens"
+	"github.com/nbrglm/nexeres/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
@@ -26,7 +27,7 @@ func NewRefreshTokenHandler() *RefreshTokenHandler {
 	return &RefreshTokenHandler{
 		RefreshTokenCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "nbrglm_auth_platform",
+				Namespace: "nexeres",
 				Subsystem: "auth",
 				Name:      "user_refresh_token_requests",
 				Help:      "Total number of user refresh token requests",
@@ -51,7 +52,7 @@ type RefreshTokenResult struct {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param X-NAP-Refresh-Token header string true "Refresh token"
+// @Param X-NEXERES-Refresh-Token header string true "Refresh token"
 // @Success 200 {object} RefreshTokenResult "New tokens"
 // @Failure 400 {object} models.ErrorResponse "Bad Request - Invalid or missing tokens"
 // @Failure 401 {object} models.ErrorResponse "Unauthorized - Invalid or expired tokens - Proceed to Login"
@@ -68,7 +69,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(c *gin.Context) {
 
 	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -84,11 +85,11 @@ func (h *RefreshTokenHandler) HandleRefreshToken(c *gin.Context) {
 	session, err := q.GetSessionByRefreshToken(ctx, refreshTokenHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			ProcessError(c, models.NewErrorResponse("Invalid refresh token! Please login again.", "No session found for refresh token", http.StatusUnauthorized, nil), span, log, h.RefreshTokenCounter, "refresh_token")
+			utils.ProcessError(c, models.NewErrorResponse("Invalid refresh token! Please login again.", "No session found for refresh token", http.StatusUnauthorized, nil), span, log, h.RefreshTokenCounter, "refresh_token")
 			return
 		}
 
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve session", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve session", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 	log.Debug("Session retrieved successfully", zap.String("sessionID", session.ID.String()))
@@ -108,11 +109,11 @@ func (h *RefreshTokenHandler) HandleRefreshToken(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			log.Debug("No user or organization found for session", zap.String("sessionID", session.ID.String()))
-			ProcessError(c, models.NewErrorResponse("User or organization not found! Please login again.", "No user or organization found for session", http.StatusUnauthorized, nil), span, log, h.RefreshTokenCounter, "refresh_token")
+			utils.ProcessError(c, models.NewErrorResponse("User or organization not found! Please login again.", "No user or organization found for session", http.StatusUnauthorized, nil), span, log, h.RefreshTokenCounter, "refresh_token")
 			return
 		}
 
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve user or organization info", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to retrieve user or organization info", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 	log.Debug("User and organization info retrieved successfully", zap.String("userID", session.UserID.String()), zap.String("orgSlug", newTokenInfo.OrgSlug))
@@ -124,7 +125,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(c *gin.Context) {
 
 	log.Debug("Generating new tokens for user", zap.String("orgSlug", newTokenInfo.OrgSlug))
 
-	newTokenPair, err := tokens.RefreshSessionTokens(session, tokens.AuthPlatformClaims{
+	newTokenPair, err := tokens.RefreshSessionTokens(session, tokens.NexeresClaims{
 		OrgSlug: newTokenInfo.OrgSlug,
 		OrgName: newTokenInfo.OrgName,
 		OrgId:   session.OrgID.String(),
@@ -137,7 +138,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(c *gin.Context) {
 		UserOrgRole:   newTokenInfo.UserOrgRole,
 	})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to generate new tokens", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to generate new tokens", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 	log.Debug("New token pair generated successfully")
@@ -155,12 +156,12 @@ func (h *RefreshTokenHandler) HandleRefreshToken(c *gin.Context) {
 	})
 
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to refresh session", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Unable to refresh session", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.RefreshTokenCounter, "refresh_token")
 		return
 	}
 

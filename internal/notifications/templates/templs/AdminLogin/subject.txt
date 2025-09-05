@@ -1,0 +1,3 @@
+{{define "AdminLoginSubject"}}
+Login OTP for Admin Dashboard - {{.AppName}} | Nexeres
+{{end}}

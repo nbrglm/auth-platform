@@ -10,17 +10,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/db"
-	"github.com/nbrglm/auth-platform/internal"
-	"github.com/nbrglm/auth-platform/internal/cache"
-	"github.com/nbrglm/auth-platform/internal/metrics"
-	"github.com/nbrglm/auth-platform/internal/models"
-	"github.com/nbrglm/auth-platform/internal/password"
-	"github.com/nbrglm/auth-platform/internal/store"
-	"github.com/nbrglm/auth-platform/internal/tokens"
-	"github.com/nbrglm/auth-platform/opts"
-	"github.com/nbrglm/auth-platform/utils"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/db"
+	"github.com/nbrglm/nexeres/internal"
+	"github.com/nbrglm/nexeres/internal/cache"
+	"github.com/nbrglm/nexeres/internal/metrics"
+	"github.com/nbrglm/nexeres/internal/models"
+	"github.com/nbrglm/nexeres/internal/password"
+	"github.com/nbrglm/nexeres/internal/store"
+	"github.com/nbrglm/nexeres/internal/tokens"
+	"github.com/nbrglm/nexeres/opts"
+	"github.com/nbrglm/nexeres/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
@@ -33,7 +33,7 @@ func NewLoginHandler() *LoginHandler {
 	return &LoginHandler{
 		LoginCounter: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "nbrglm_auth_platform",
+				Namespace: "nexeres",
 				Subsystem: "auth",
 				Name:      "user_login_requests",
 				Help:      "Total number of user login requests",
@@ -75,8 +75,7 @@ type UserLoginResult struct {
 // @Param data body UserLoginData true "User Login Data"
 // @Success 200 {object} UserLoginResult "User Login Result"
 // @Failure 400 {object} models.ErrorResponse "Bad Request"
-// @Failure 401 {object} models.ErrorResponse "Unauthorized"
-// @Failure 403 {object} UserLoginResult "Forbidden - Email Not Verified OR User does not belong to any organization"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized - Invalid Credentials or User does not belong to any organization"
 // @Failure 500 {object} models.ErrorResponse "Internal Server Error"
 // @Router /api/auth/login [post]
 func (h *LoginHandler) HandleLogin(c *gin.Context) {
@@ -96,13 +95,13 @@ func (h *LoginHandler) handleSingleTenantLogin(c *gin.Context) {
 
 	var loginData UserLoginData
 	if err := c.ShouldBindJSON(&loginData); err != nil {
-		ProcessError(c, models.NewErrorResponse("Invalid input data", "Bad Request", http.StatusBadRequest, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid input data", "Bad Request", http.StatusBadRequest, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 
 	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -113,17 +112,17 @@ func (h *LoginHandler) handleSingleTenantLogin(c *gin.Context) {
 	user, err := q.GetLoginInfoForUser(ctx, loginData.Email)
 	if errors.Is(err, pgx.ErrNoRows) {
 		log.Debug("User not found", zap.String("email", loginData.Email))
-		ProcessError(c, models.NewErrorResponse("Invalid email or password! Please try again.", "User not found!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid email or password! Please try again.", "User not found!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse("An error occurred while processing your request. Please try again later.", "Failed to retrieve user information!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("An error occurred while processing your request. Please try again later.", "Failed to retrieve user information!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 
 	if !user.EmailVerified {
 		log.Debug("User email not verified", zap.String("email", loginData.Email))
-		c.JSON(http.StatusForbidden, &UserLoginResult{
+		c.JSON(http.StatusOK, &UserLoginResult{
 			Message:                  "Please verify your email before logging in.",
 			RequireEmailVerification: true,
 		})
@@ -133,7 +132,7 @@ func (h *LoginHandler) handleSingleTenantLogin(c *gin.Context) {
 	log.Debug("Verifying user password")
 	if !password.VerifyPasswordMatch(*user.PasswordHash, loginData.Password) {
 		log.Debug("Password mismatch", zap.String("email", loginData.Email))
-		ProcessError(c, models.NewErrorResponse("Invalid credentials! Please try again.", "Password mismatch!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid credentials! Please try again.", "Password mismatch!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 
@@ -143,7 +142,7 @@ func (h *LoginHandler) handleSingleTenantLogin(c *gin.Context) {
 	}
 
 	log.Debug("Generating tokens")
-	tokensResult, err := tokens.GenerateTokens(user.ID, tokens.AuthPlatformClaims{
+	tokensResult, err := tokens.GenerateTokens(user.ID, tokens.NexeresClaims{
 		OrgSlug: opts.DefaultOrgSlug,
 		OrgName: opts.DefaultOrgName,
 		OrgId:   opts.DefaultOrgId,
@@ -156,7 +155,7 @@ func (h *LoginHandler) handleSingleTenantLogin(c *gin.Context) {
 		UserOrgRole:   "member",
 	})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate token pair!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate token pair!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 
@@ -185,12 +184,12 @@ func (h *LoginHandler) handleSingleTenantLogin(c *gin.Context) {
 	})
 
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to create session in the db!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to create session in the db!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 
@@ -207,7 +206,7 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 
 	var loginData UserLoginData
 	if err := c.ShouldBindJSON(&loginData); err != nil {
-		ProcessError(c, models.NewErrorResponse("Invalid input data", "Bad Request", http.StatusBadRequest, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid input data", "Bad Request", http.StatusBadRequest, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 
@@ -216,13 +215,13 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 
 	_, err := utils.GetDomainFromEmail(loginData.Email)
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse("Invalid request! Please input a valid email and try again.", "Invalid email domain!", http.StatusBadRequest, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid request! Please input a valid email and try again.", "Invalid email domain!", http.StatusBadRequest, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 
 	tx, err := store.PgPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to begin transaction!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 	defer tx.Rollback(ctx)
@@ -231,17 +230,17 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 
 	user, err := q.GetLoginInfoForUser(ctx, loginData.Email)
 	if errors.Is(err, pgx.ErrNoRows) {
-		ProcessError(c, models.NewErrorResponse("Invalid email or password! Please try again.", "User not found!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid email or password! Please try again.", "User not found!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve user information!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve user information!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 
 	if !user.EmailVerified {
 		log.Debug("User email not verified", zap.String("email", loginData.Email))
-		c.JSON(http.StatusForbidden, &UserLoginResult{
+		c.JSON(http.StatusOK, &UserLoginResult{
 			Message:                  "Please verify your email before logging in.",
 			RequireEmailVerification: true,
 		})
@@ -249,22 +248,22 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 	}
 
 	if !password.VerifyPasswordMatch(*user.PasswordHash, loginData.Password) {
-		ProcessError(c, models.NewErrorResponse("Invalid credentials! Please try again.", "Password mismatch!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("Invalid credentials! Please try again.", "Password mismatch!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 
 	// Fetch the organizations the user belongs to
 	orgs, err := q.GetUserOrgsByEmail(ctx, &user.Email)
 	if errors.Is(err, pgx.ErrNoRows) {
-		ProcessError(c, models.NewErrorResponse("You do not belong to any organization! Please contact your administrator.", "No organizations found for the user!", http.StatusForbidden, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("You do not belong to any organization! Please contact your administrator.", "No organizations found for the user!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve user organizations!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to retrieve user organizations!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 	if len(orgs) == 0 {
-		ProcessError(c, models.NewErrorResponse("You do not belong to any organization! Please contact your administrator.", "No organizations found for the user!", http.StatusForbidden, nil), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse("You do not belong to any organization! Please contact your administrator.", "No organizations found for the user!", http.StatusUnauthorized, nil), span, log, h.LoginCounter, "login")
 		return
 	}
 	if len(orgs) == 1 {
@@ -274,7 +273,7 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 		}
 
 		// If the user belongs to a single organization, create a session for that organization
-		result, err := tokens.GenerateTokens(user.ID, tokens.AuthPlatformClaims{
+		result, err := tokens.GenerateTokens(user.ID, tokens.NexeresClaims{
 			OrgSlug: orgs[0].Org.Slug,
 			OrgName: orgs[0].Org.Name,
 			OrgId:   orgs[0].Org.ID.String(),
@@ -287,7 +286,7 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 			UserOrgRole:   orgs[0].UserOrg.Role,
 		})
 		if err != nil {
-			ProcessError(c, models.NewErrorResponse("An error occurred while processing your request. Please try again later.", "Failed to generate token pair!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+			utils.ProcessError(c, models.NewErrorResponse("An error occurred while processing your request. Please try again later.", "Failed to generate token pair!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 			return
 		}
 
@@ -312,12 +311,12 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 		})
 
 		if err != nil {
-			ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to create session in the db!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+			utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to create session in the db!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 			return
 		}
 
 		if err := tx.Commit(ctx); err != nil {
-			ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+			utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to commit transaction!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 			return
 		}
 
@@ -338,7 +337,7 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 
 	fId, err := uuid.NewV7()
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate flow ID!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to generate flow ID!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 	flow = &cache.FlowData{
@@ -360,7 +359,7 @@ func (h *LoginHandler) handleMultitenantLogin(c *gin.Context) {
 	err = cache.StoreFlow(ctx, *flow)
 
 	if err != nil {
-		ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to store flow data!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
+		utils.ProcessError(c, models.NewErrorResponse(models.GenericErrorMessage, "Failed to store flow data!", http.StatusInternalServerError, err), span, log, h.LoginCounter, "login")
 		return
 	}
 

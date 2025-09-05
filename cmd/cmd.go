@@ -8,9 +8,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "nbrglm-auth-platform",
-	Short: "NBRGLM Auth Platform CLI application",
-	Long:  "A command line interface for the NBRGLM Auth Platform",
+	Use:   "nexeres",
+	Short: "NBRGLM Nexeres CLI application",
+	Long:  "A command line interface for the NBRGLM Nexeres",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.PrintErrln("Please specify a command to run!")

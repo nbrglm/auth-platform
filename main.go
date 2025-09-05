@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/nbrglm/auth-platform/cmd"
+	"github.com/nbrglm/nexeres/cmd"
 )
 
-// @title NBRGLM Auth Platform
+// @title NBRGLM Nexeres API Spec
 // @version 0.0.1
-// @description This is the NBRGLM Auth Platform API documentation.
-// @termsOfService https://nbrglm.com/auth-platform/terms
+// @description This is the NBRGLM Nexeres API Spec documentation.
+// @termsOfService https://nbrglm.com/nexeres/terms
 
 // @contact.name NBRGLM Support
 // @contact.url https://nbrglm.com/support
@@ -21,18 +21,22 @@ import (
 
 // @securityDefinitions.apiKey APIKeyAuth
 // @in header
-// @name X-NAP-API-Key
+// @name X-NEXERES-API-Key
 
 // @securityDefinitions.apikey SessionHeaderAuth
 // @in header
-// @name X-NAP-Session-Token
+// @name X-NEXERES-Session-Token
 
 // @securityDefinitions.apiKey RefreshHeaderAuth
 // @in header
-// @name X-NAP-Refresh-Token
+// @name X-NEXERES-Refresh-Token
 
-// @externalDocs.description NBRGLM Auth Platform Documentation
-// @externalDocs.url https://nbrglm.com/auth-platform/docs
+// @securityDefinitions.apikey AdminHeaderAuth
+// @in header
+// @name X-NEXERES-Admin-Token
+
+// @externalDocs.description NBRGLM Nexeres Documentation
+// @externalDocs.url https://nbrglm.com/nexeres/docs
 func main() {
 	// Execute the root command.
 	cmd.Exec()

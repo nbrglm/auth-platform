@@ -7,7 +7,7 @@ import (
 	"encoding/pem"
 	"os"
 
-	"github.com/nbrglm/auth-platform/utils"
+	"github.com/nbrglm/nexeres/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -17,22 +17,22 @@ type keygenConfig struct {
 
 	// PrivateKeyPath is the path to the private key file for RS256 algorithm
 	//
-	// Defaults to "/etc/nbrglm/workspace/auth-platform/keys/jwt/private.pem"
+	// Defaults to "/etc/nbrglm/workspace/nexeres/keys/jwt/private.pem"
 	// This field is required if Mode is "rs256".
 	PrivateKeyPath string `validate:"file,required_if=Mode rs256"`
 
 	// PublicKeyPath is the path to the public key file for RS256 algorithm
-	// Defaults to "/etc/nbrglm/workspace/auth-platform/keys/jwt/public.pem"
+	// Defaults to "/etc/nbrglm/workspace/nexeres/keys/jwt/public.pem"
 	// This field is required if Mode is "rs256".
 	PublicKeyPath string `validate:"file,required_if=Mode rs256"`
 
 	// CookieSigningSecret is the path to the secret key file for Cookie Signing algorithm
-	// Defaults to "/etc/nbrglm/workspace/auth-platform/keys/cookie/signing-secret"
+	// Defaults to "/etc/nbrglm/workspace/nexeres/keys/cookie/signing-secret"
 	// This field is required if Mode is "cookie-signing".
 	CookieSigningSecret string `validate:"file,required_if=Mode cookie-signing"`
 
 	// CSRFSecretKeyPath is the path to the CSRF secret key file
-	// Defaults to "/etc/nbrglm/workspace/auth-platform/keys/csrf/secret"
+	// Defaults to "/etc/nbrglm/workspace/nexeres/keys/csrf/secret"
 	// This field is required if Mode is "csrf".
 	CSRFSecretKeyPath string `validate:"file,required_if=Mode csrf"`
 
@@ -53,10 +53,10 @@ func initKeygenCommand() {
 	}
 
 	keygenCmd.Flags().StringVar(&keygenCfg.Mode, "mode", "csrf", "Mode to generate key for. One of 'cookie-signing', 'rs256', 'csrf'")
-	keygenCmd.Flags().StringVar(&keygenCfg.PrivateKeyPath, "private-key-path", "/etc/nbrglm/workspace/auth-platform/keys/jwt/private.pem", "Path to the private key file (for RS256 algorithm)")
-	keygenCmd.Flags().StringVar(&keygenCfg.PublicKeyPath, "public-key-path", "/etc/nbrglm/workspace/auth-platform/keys/jwt/public.pem", "Path to the public key file (for RS256 algorithm)")
-	keygenCmd.Flags().StringVar(&keygenCfg.CookieSigningSecret, "cookie-signing-secret-path", "/etc/nbrglm/workspace/auth-platform/keys/cookie/signing-secret", "Path to the secret key file (for Cookie Signing)")
-	keygenCmd.Flags().StringVar(&keygenCfg.CSRFSecretKeyPath, "csrf-secret-key-path", "/etc/nbrglm/workspace/auth-platform/keys/csrf/secret", "Path to the CSRF secret key file")
+	keygenCmd.Flags().StringVar(&keygenCfg.PrivateKeyPath, "private-key-path", "/etc/nbrglm/workspace/nexeres/keys/jwt/private.pem", "Path to the private key file (for RS256 algorithm)")
+	keygenCmd.Flags().StringVar(&keygenCfg.PublicKeyPath, "public-key-path", "/etc/nbrglm/workspace/nexeres/keys/jwt/public.pem", "Path to the public key file (for RS256 algorithm)")
+	keygenCmd.Flags().StringVar(&keygenCfg.CookieSigningSecret, "cookie-signing-secret-path", "/etc/nbrglm/workspace/nexeres/keys/cookie/signing-secret", "Path to the secret key file (for Cookie Signing)")
+	keygenCmd.Flags().StringVar(&keygenCfg.CSRFSecretKeyPath, "csrf-secret-key-path", "/etc/nbrglm/workspace/nexeres/keys/csrf/secret", "Path to the CSRF secret key file")
 	keygenCmd.Flags().BoolVar(&keygenCfg.Force, "force", false, "Force overwrite existing keys")
 
 	rootCmd.AddCommand(keygenCmd)
@@ -96,7 +96,7 @@ func keygen(cmd *cobra.Command) {
 	cmd.Println("Key generation completed successfully.")
 	cmd.Println("You can now use the generated keys in the configuration file.")
 	cmd.Println("For more information, refer to the documentation.")
-	cmd.Println("Thank you for using the NBRGLM Auth Platform CLI!")
+	cmd.Println("Thank you for using the Nexeres CLI!")
 	cmd.Println("If you have any questions or issues, please reach out to the support team.")
 }
 

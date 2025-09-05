@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/nbrglm/auth-platform/opts"
+	"github.com/nbrglm/nexeres/opts"
 )
 
 // NewErrorResponse creates a new ErrorResponse instance.
@@ -42,22 +42,6 @@ func NewGenericErrorResponse(opName string, err error) *ErrorResponse {
 	}
 }
 
-// WithUI sets the UI parameters for the error if it's an ErrorResponse instance.
-// It only sets the RetryUrl, RedirectUrl, and RetryButtonText fields IF they are not already set.
-func (e *ErrorResponse) WithUI(retryUrl, redirectUrl, retryButtonText string) *ErrorResponse {
-	if e == nil {
-		return nil
-	}
-	if e.UIParams == nil {
-		e.UIParams = &ErrorUIParams{
-			RetryUrl:        retryUrl,
-			RedirectUrl:     redirectUrl,
-			RetryButtonText: retryButtonText,
-		}
-	}
-	return e
-}
-
 // Filter filters the ErrorResponse based on the debug mode.
 // If debug mode is enabled, it returns the full error response including the debug message.
 // If debug mode is not enabled, it returns a filtered error response without the debug message.
@@ -80,27 +64,15 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 	// DebugMessage is a technical message that can be used for debugging.
 	DebugMessage string `json:"debug"`
-	// Code is an error code that can be used for programmatic handling of errors.
-	Code int `json:"code"`
+
+	// HTTP Status code associated with this error.
+	// It is not serialized to JSON. This field is useful for setting the HTTP status code in the response.
+	Code int `json:"-"`
 
 	// UnderlyingError is an optional field that can hold the original error
 	// that caused this error response. It is not serialized to JSON.
 	// This field is useful for logging and debugging purposes.
 	UnderlyingError error `json:"-"`
-
-	UIParams *ErrorUIParams `json:"-"` // UIParams holds additional parameters for UI handling, such as redirect URLs and button text.
-}
-
-// ErrorUIParams holds additional parameters for UI handling, such as redirect URLs and button text.
-type ErrorUIParams struct {
-	// RetryUrl is an internal field used for the UI to redirect the user to a retry page.
-	RetryUrl string `json:"-"`
-
-	// RedirectUrl is an internal field used for the UI to redirect the user to a specific page.
-	RedirectUrl string `json:"-"`
-
-	// RetryButtonText is an internal field used for the UI to display a retry button with a specific text.
-	RetryButtonText string `json:"-"`
 }
 
 func (e *ErrorResponse) Error() string {

@@ -3,7 +3,7 @@ package notifications
 import (
 	"fmt"
 
-	"github.com/nbrglm/auth-platform/config"
+	"github.com/nbrglm/nexeres/config"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )

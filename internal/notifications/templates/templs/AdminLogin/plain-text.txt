@@ -1,0 +1,17 @@
+{{define "AdminLoginText"}}
+Login OTP for Admin Dashboard - {{.AppName}} | Nexeres
+
+Hello {{.UserName}},
+A login attempt was made to login to the admin dashboard, please enter the following code to complete your login.
+
+{{.ActionURL}}
+
+Please note that this code will expire at {{.ExpiresAt.Format "Jan 2, 2006 at 3:04 PM"}}. If you didn't attempt a login, please ignore this email.
+
+Need help? Contact us at {{.SupportURL}}.
+
+Best regards,
+The {{.AppName}} Team
+
+Powered by Nexeres - https://docs.nbrglm.com/nexeres
+{{end}}

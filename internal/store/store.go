@@ -11,9 +11,9 @@ import (
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/nbrglm/auth-platform/config"
-	"github.com/nbrglm/auth-platform/db"
-	"github.com/nbrglm/auth-platform/opts"
+	"github.com/nbrglm/nexeres/config"
+	"github.com/nbrglm/nexeres/db"
+	"github.com/nbrglm/nexeres/opts"
 )
 
 // A DB Connection Pool

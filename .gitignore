@@ -34,4 +34,4 @@ build
 sample-config.yaml
 
 # Docker compose files for development store data here
-.data
+data

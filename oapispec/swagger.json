@@ -1,9 +1,9 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This is the NBRGLM Auth Platform API documentation.",
-        "title": "NBRGLM Auth Platform",
-        "termsOfService": "https://nbrglm.com/auth-platform/terms",
+        "description": "This is the NBRGLM Nexeres API Spec documentation.",
+        "title": "NBRGLM Nexeres API Spec",
+        "termsOfService": "https://nbrglm.com/nexeres/terms",
         "contact": {
             "name": "NBRGLM Support",
             "url": "https://nbrglm.com/support",
@@ -13,11 +13,147 @@
             "name": "Apache 2.0",
             "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
         },
-        "version": "0.1.0"
+        "version": "0.0.1"
     },
     "host": "localhost:3360",
     "basePath": "/",
     "paths": {
+        "/api/admin/config": {
+            "get": {
+                "description": "Retrieves the current configuration of the application.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get current configuration",
+                "responses": {
+                    "200": {
+                        "description": "Current configuration",
+                        "schema": {
+                            "$ref": "#/definitions/config.CompleteConfig"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/login": {
+            "post": {
+                "description": "Sends a login code to the admin's email if it exists",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Admin login",
+                "parameters": [
+                    {
+                        "description": "Admin login data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin_handlers.AdminLoginData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Admin Login Result",
+                        "schema": {
+                            "$ref": "#/definitions/admin_handlers.AdminLoginResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/login/verify": {
+            "post": {
+                "description": "Verifies the admin login using the code sent to email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Verify admin login",
+                "parameters": [
+                    {
+                        "description": "Verify admin login data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin_handlers.VerifyAdminLoginData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verify Admin Login Result",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/flow/{flowId}": {
             "get": {
                 "description": "Retrieves user flow data based on the provided flow ID.",
@@ -100,15 +236,9 @@
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Unauthorized - Invalid Credentials or User does not belong to any organization",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - Email Not Verified OR User does not belong to any organization",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.UserLoginResult"
                         }
                     },
                     "500": {
@@ -137,13 +267,13 @@
                     {
                         "type": "string",
                         "description": "Session token",
-                        "name": "X-NAP-Session-Token",
+                        "name": "X-NEXERES-Session-Token",
                         "in": "header"
                     },
                     {
                         "type": "string",
                         "description": "Refresh token",
-                        "name": "X-NAP-Refresh-Token",
+                        "name": "X-NEXERES-Refresh-Token",
                         "in": "header"
                     }
                 ],
@@ -192,7 +322,7 @@
                     {
                         "type": "string",
                         "description": "Refresh token",
-                        "name": "X-NAP-Refresh-Token",
+                        "name": "X-NEXERES-Refresh-Token",
                         "in": "header",
                         "required": true
                     }
@@ -371,6 +501,308 @@
         }
     },
     "definitions": {
+        "admin_handlers.AdminLoginData": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "admin_handlers.AdminLoginResult": {
+            "type": "object",
+            "properties": {
+                "emailSent": {
+                    "description": "If true, the email is an existing admin email and a verification code has been sent.\nThe user can then proceed to verify the code.",
+                    "type": "boolean"
+                },
+                "flowId": {
+                    "description": "The flow ID for the login process. This is required for verifying the code.",
+                    "type": "string"
+                }
+            }
+        },
+        "admin_handlers.VerifyAdminLoginData": {
+            "type": "object",
+            "required": [
+                "code",
+                "flowId"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "flowId": {
+                    "type": "string"
+                }
+            }
+        },
+        "config.APIKeyConfig": {
+            "type": "object",
+            "required": [
+                "description",
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "description": "Description of the key",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "The name of the API Key",
+                    "type": "string"
+                }
+            }
+        },
+        "config.AuditLogsConfig": {
+            "type": "object",
+            "properties": {
+                "enable": {
+                    "description": "Enable or disable audit logs.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "config.BrandingConfig": {
+            "type": "object",
+            "required": [
+                "appName",
+                "companyName",
+                "companyNameShort",
+                "supportURL"
+            ],
+            "properties": {
+                "appName": {
+                    "description": "AppName is the name of the application, used in various places like email templates, UI, etc.",
+                    "type": "string"
+                },
+                "companyName": {
+                    "description": "CompanyName is the name of the company, used in emails, UI, etc.",
+                    "type": "string"
+                },
+                "companyNameShort": {
+                    "description": "CompanyNameShort is a short version of the company name, used in places where space is limited.",
+                    "type": "string"
+                },
+                "supportURL": {
+                    "description": "SupportURL is the URL for support, used in emails, UI, etc.",
+                    "type": "string"
+                }
+            }
+        },
+        "config.CompleteConfig": {
+            "type": "object",
+            "required": [
+                "branding",
+                "jwt",
+                "multitenancy",
+                "notifications",
+                "public",
+                "security"
+            ],
+            "properties": {
+                "branding": {
+                    "$ref": "#/definitions/config.BrandingConfig"
+                },
+                "debug": {
+                    "description": "Debug mode for the application",
+                    "type": "boolean"
+                },
+                "jwt": {
+                    "$ref": "#/definitions/config.JWTConfig"
+                },
+                "multitenancy": {
+                    "type": "boolean"
+                },
+                "notifications": {
+                    "$ref": "#/definitions/config.NotificationsConfig"
+                },
+                "public": {
+                    "$ref": "#/definitions/config.PublicConfig"
+                },
+                "security": {
+                    "$ref": "#/definitions/config.SecurityConfig"
+                }
+            }
+        },
+        "config.EmailEndpointsConfig": {
+            "type": "object",
+            "required": [
+                "passwordReset",
+                "verificationEmail"
+            ],
+            "properties": {
+                "passwordReset": {
+                    "description": "PasswordReset is the endpoint for the password reset link.\nA `token` parameter will be passed to this URL.\nPass a full url, eg. https://auth.example.com/password-reset",
+                    "type": "string"
+                },
+                "verificationEmail": {
+                    "description": "VerificationEmail is the endpoint for the email verification link.\nA `token` parameter will be passed to this URL.\nPass a full url, eg. https://auth.example.com/verify-email",
+                    "type": "string"
+                }
+            }
+        },
+        "config.EmailNotificationConfig": {
+            "type": "object",
+            "required": [
+                "endpoints",
+                "provider"
+            ],
+            "properties": {
+                "endpoints": {
+                    "description": "Endpoints holds the configuration for URLs inside emails.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.EmailEndpointsConfig"
+                        }
+                    ]
+                },
+                "provider": {
+                    "description": "Provider is the email provider to use for sending emails.",
+                    "type": "string",
+                    "enum": [
+                        "ses",
+                        "sendgrid",
+                        "smtp"
+                    ]
+                }
+            }
+        },
+        "config.JWTConfig": {
+            "type": "object",
+            "required": [
+                "refreshTokenExpiration",
+                "sessionTokenExpiration"
+            ],
+            "properties": {
+                "refreshTokenExpiration": {
+                    "description": "Refresh token expiration time in seconds (default: 30d, 2592000)",
+                    "type": "integer",
+                    "minimum": 86400
+                },
+                "sessionTokenExpiration": {
+                    "description": "Session token expiration time in seconds (default: 1hr, 3600)",
+                    "type": "integer",
+                    "minimum": 60
+                }
+            }
+        },
+        "config.NotificationsConfig": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "description": "Email configuration for sending notifications",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.EmailNotificationConfig"
+                        }
+                    ]
+                },
+                "sms": {
+                    "description": "SMS Configuration for sending notifications",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.SMSNotificationConfig"
+                        }
+                    ]
+                }
+            }
+        },
+        "config.PublicConfig": {
+            "type": "object",
+            "required": [
+                "domain",
+                "scheme",
+                "subDomain"
+            ],
+            "properties": {
+                "debugBaseURL": {
+                    "type": "string"
+                },
+                "domain": {
+                    "description": "Domain is the domain at which Nexeres UI is being hosted.\n\nEg. if hosting Nexeres at auth.example.com, provide \"example.com\" here.\n\nThis setting is used as the Domain for all Cookies (except Refresh Token Cookie, that is only set at \"subdomain.domain\")",
+                    "type": "string"
+                },
+                "scheme": {
+                    "description": "Scheme for public URLs (http/https)\n\nUse \"https\" even if TLS termination is handled by reverse proxy",
+                    "type": "string",
+                    "enum": [
+                        "http",
+                        "https"
+                    ]
+                },
+                "subDomain": {
+                    "description": "Subdomain at which Nexeres UI is being hosted.\n\nEg. If hosting Nexeres at auth.example.com, provide \"auth\" here.",
+                    "type": "string"
+                }
+            }
+        },
+        "config.RateLimitConfig": {
+            "type": "object",
+            "required": [
+                "rate"
+            ],
+            "properties": {
+                "rate": {
+                    "description": "Rate limit for API requests.\nFormat: \"R-U\", where R is requests and U is the time unit (s - per second, m - per minute, h - per hour, d - per day)",
+                    "type": "string"
+                }
+            }
+        },
+        "config.SMSNotificationConfig": {
+            "type": "object",
+            "required": [
+                "provider"
+            ],
+            "properties": {
+                "provider": {
+                    "description": "TODO: Implement SMSNotificationConfig",
+                    "type": "string",
+                    "enum": [
+                        "twilio"
+                    ]
+                }
+            }
+        },
+        "config.SecurityConfig": {
+            "type": "object",
+            "required": [
+                "apiKeys",
+                "auditLogs",
+                "rateLimit"
+            ],
+            "properties": {
+                "apiKeys": {
+                    "description": "The list of API Keys which are allowed to access the API endpoints.\nRequests without an API key, or with a key not specified here, will be denied with 401.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.APIKeyConfig"
+                    }
+                },
+                "auditLogs": {
+                    "description": "Enable or disable audit logs.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.AuditLogsConfig"
+                        }
+                    ]
+                },
+                "rateLimit": {
+                    "description": "Rate limiting configuration.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.RateLimitConfig"
+                        }
+                    ]
+                }
+            }
+        },
         "handlers.LogoutResult": {
             "type": "object",
             "properties": {
@@ -425,10 +857,6 @@
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "inviteToken": {
-                    "description": "For Invite Flow",
                     "type": "string"
                 },
                 "mfaRequired": {
@@ -568,10 +996,6 @@
         "models.ErrorResponse": {
             "type": "object",
             "properties": {
-                "code": {
-                    "description": "Code is an error code that can be used for programmatic handling of errors.",
-                    "type": "integer"
-                },
                 "debug": {
                     "description": "DebugMessage is a technical message that can be used for debugging.",
                     "type": "string"
@@ -618,23 +1042,23 @@
         "tokens.Tokens": {
             "type": "object",
             "properties": {
-                "refresh_token": {
+                "refreshToken": {
                     "description": "RefreshToken is the generated refresh token.\n\nThis is base64.RawURLEncoding encoded.\nDO NOT DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.",
                     "type": "string"
                 },
-                "refresh_token_expiry": {
+                "refreshTokenExpiry": {
                     "description": "RefreshTokenExpiry is the expiration time of the refresh token.",
                     "type": "string"
                 },
-                "session_id": {
+                "sessionId": {
                     "description": "SessionId is the unique identifier for the session.",
                     "type": "string"
                 },
-                "session_token": {
+                "sessionToken": {
                     "description": "SessionToken is the generated session token.\n\nThis is a jwt which is base64.RawURLEncoding encoded.\nYOU NEED TO DECODE IT WHILE RETRIEVING IT FROM THE COOKIES/CLIENT.\nDO NOT USE IT AS IS. VALIDATION WILL FAIL WITHOUT DECODING.\nONLY WHEN DECODED, YOU SHOULD PASS IT TO THE THINGS THAT REQUIRE THE SESSION TOKEN.",
                     "type": "string"
                 },
-                "session_token_expiry": {
+                "sessionTokenExpiry": {
                     "description": "SessionTokenExpiry is the expiration time of the session token.",
                     "type": "string"
                 }
@@ -644,22 +1068,27 @@
     "securityDefinitions": {
         "APIKeyAuth": {
             "type": "apiKey",
-            "name": "X-NAP-API-Key",
+            "name": "X-NEXERES-API-Key",
+            "in": "header"
+        },
+        "AdminHeaderAuth": {
+            "type": "apiKey",
+            "name": "X-NEXERES-Admin-Token",
             "in": "header"
         },
         "RefreshHeaderAuth": {
             "type": "apiKey",
-            "name": "X-NAP-Refresh-Token",
+            "name": "X-NEXERES-Refresh-Token",
             "in": "header"
         },
         "SessionHeaderAuth": {
             "type": "apiKey",
-            "name": "X-NAP-Session-Token",
+            "name": "X-NEXERES-Session-Token",
             "in": "header"
         }
     },
     "externalDocs": {
-        "description": "NBRGLM Auth Platform Documentation",
-        "url": "https://nbrglm.com/auth-platform/docs"
+        "description": "NBRGLM Nexeres Documentation",
+        "url": "https://nbrglm.com/nexeres/docs"
     }
 }

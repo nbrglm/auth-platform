@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nbrglm/auth-platform/config"
+	"github.com/nbrglm/nexeres/config"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
 )

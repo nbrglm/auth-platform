@@ -1,0 +1,84 @@
+{{define "AdminLoginHTML"}}
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+  <title>Login OTP for Admin Dashboard - {{.AppName}} | Nexeres</title>
+  <style>
+    a:link {
+      color: #888;
+    }
+
+    a:visited {
+      color: #888;
+    }
+
+    a:hover {
+      color: #AAA;
+    }
+  </style>
+</head>
+
+<body
+  style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8f9fa;"
+>
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: white; border-radius: 12px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+      <h1 style="color: #333; margin: 0 0 24px 0; font-size: 28px; font-weight: 600;">Login OTP for Admin Dashboard -
+        {{.AppName}} | Nexeres</h1>
+
+      <p style="color: #666; font-size: 16px; line-height: 1.5; margin: 0 0 24px 0;">
+        Hello {{.UserName}},
+      </p>
+
+      <p style="color: #666; font-size: 16px; line-height: 1.5; margin: 0 0 32px 0;">
+        A login attempt was made to login to the admin dashboard, Please enter the following code to complete your
+        login.
+      </p>
+
+      <p style="color: #000; font-size: 18px; line-height: 1.5; font-family: monospace; text-align: center;">
+        <!-- The code is taken input as the ActionURL to maintain compatibility with the interface of template -->
+        {{.ActionURL}}
+      </p>
+
+      <p style="color: #888; font-size: 14px; line-height: 1.5; margin: 24px 0 0 0;">
+        Please note that this code will expire at {{.ExpiresAt.Format "Jan 2, 2006 at 3:04 PM"}}. If you didn't attempt
+        a login, please ignore this email.
+        <br>
+      </p>
+
+      <p style="color: #666; font-size: 14px; line-height: 1.5; margin: 24px 0 0 0;">
+        Need help? Contact us at <a
+          href="{{.SupportURL}}"
+          style="color: #306dd6; text-decoration: none;"
+        >{{.SupportURL}}</a>.
+      </p>
+
+      <p style="color: #888; font-size: 14px; line-height: 1.5; margin: 24px 0 0 0; font-weight: bold;">
+        Best Regards, <br>
+        The {{.AppName}} Team
+      </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+      <p style="color: #888; font-size: 14px; margin: 0;">
+        © {{.ExpiresAt.Format "2006"}} {{.CompanyName}}. All rights reserved.
+      </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px; text-decoration-color: #888;">
+      <a href="https://docs.nbrglm.com/nexeres">
+        <p style="color: #888; font-size: 14px; margin: 0;">
+          Secured by Nexeres</p>
+      </a>
+    </div>
+  </div>
+</body>
+
+</html>
+{{end}}
